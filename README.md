@@ -6,7 +6,8 @@ https://nodejs.org/en/download/current
 
 Instalar Expo Go (Android)
 
-git clone https://nodejs.org/en/download/current
+git clone https://github.com/Keyteer/Calendariums.git
+
 cd ./Calendariums
 
 npx install
