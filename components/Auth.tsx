@@ -43,6 +43,7 @@ export default function Auth() {
       email: email,
       password: password,
       options: {
+        emailRedirectTo: undefined,
         data: {
           username: username,
           full_name: fullName,
@@ -50,8 +51,15 @@ export default function Auth() {
       }
     })
 
-    if (error) Alert.alert(error.message)
-    if (!session) Alert.alert('Revisa tu buzón de correo para el link de confirmación.')
+    if (error) {
+      Alert.alert('Error', error.message)
+    } else if (session) {
+      // Registro exitoso con sesión automática
+      Alert.alert('¡Registro exitoso!', 'Bienvenido a Calendariums')
+    } else {
+      // Si no hay sesión, significa que está habilitada la confirmación por email
+      Alert.alert('Registro completado', 'Revisa tu correo para confirmar tu cuenta')
+    }
     setLoading(false)
   }
 
