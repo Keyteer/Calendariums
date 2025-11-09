@@ -18,7 +18,10 @@ AppState.addEventListener('change', (state) => {
 export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false)
 
   async function signInWithEmail() {
     setLoading(true)
@@ -39,41 +42,86 @@ export default function Auth() {
     } = await supabase.auth.signUp({
       email: email,
       password: password,
+      options: {
+        data: {
+          username: username,
+          full_name: fullName,
+        }
+      }
     })
 
     if (error) Alert.alert(error.message)
-    if (!session) Alert.alert('Please check your inbox for email verification!')
+    if (!session) Alert.alert('Revisa tu buzón de correo para el link de confirmación.')
     setLoading(false)
   }
 
   return (
     <View style={styles.container}>
-      <View style={[styles.verticallySpaced, styles.mt20]}>
+      {isSignUp && (
+        <>
+          <View style={[styles.verticallySpaced, styles.mt20]}>
+            <Input
+              label="Nombre Completo"
+              leftIcon={{ type: 'font-awesome', name: 'user' }}
+              onChangeText={(text) => setFullName(text)}
+              value={fullName}
+              placeholder="Juan Pérez"
+              autoCapitalize={'words'}
+            />
+          </View>
+          <View style={styles.verticallySpaced}>
+            <Input
+              label="Usuario"
+              leftIcon={{ type: 'font-awesome', name: 'at' }}
+              onChangeText={(text) => setUsername(text)}
+              value={username}
+              placeholder="juanperez"
+              autoCapitalize={'none'}
+            />
+          </View>
+        </>
+      )}
+      <View style={[styles.verticallySpaced, isSignUp ? {} : styles.mt20]}>
         <Input
-          label="Email"
+          label="Correo"
           leftIcon={{ type: 'font-awesome', name: 'envelope' }}
           onChangeText={(text) => setEmail(text)}
           value={email}
-          placeholder="email@address.com"
+          placeholder="email@calendariums.com"
           autoCapitalize={'none'}
         />
       </View>
       <View style={styles.verticallySpaced}>
         <Input
-          label="Password"
+          label="Contraseña"
           leftIcon={{ type: 'font-awesome', name: 'lock' }}
           onChangeText={(text) => setPassword(text)}
           value={password}
           secureTextEntry={true}
-          placeholder="Password"
+          placeholder="Contraseña"
           autoCapitalize={'none'}
         />
       </View>
       <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Button title="Sign in" disabled={loading} onPress={() => signInWithEmail()} />
-      </View>
-      <View style={styles.verticallySpaced}>
-        <Button title="Sign up" disabled={loading} onPress={() => signUpWithEmail()} />
+        {!isSignUp ? (
+          <>
+            <Button title="Iniciar Sesión" disabled={loading} onPress={() => signInWithEmail()} />
+            <Button
+              title="¿No tienes cuenta? Regístrate"
+              type="clear"
+              onPress={() => setIsSignUp(true)}
+            />
+          </>
+        ) : (
+          <>
+            <Button title="Registrarse" disabled={loading} onPress={() => signUpWithEmail()} />
+            <Button
+              title="¿Ya tienes cuenta? Inicia sesión"
+              type="clear"
+              onPress={() => setIsSignUp(false)}
+            />
+          </>
+        )}
       </View>
     </View>
   )

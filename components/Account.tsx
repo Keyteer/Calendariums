@@ -7,8 +7,7 @@ import { Session } from '@supabase/supabase-js'
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
-  const [website, setWebsite] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const [fullName, setFullName] = useState('')
 
   useEffect(() => {
     if (session) getProfile()
@@ -20,8 +19,8 @@ export default function Account({ session }: { session: Session }) {
       if (!session?.user) throw new Error('No user on the session!')
 
       const { data, error, status } = await supabase
-        .from('profiles')
-        .select(`username, website, avatar_url`)
+        .from('users')
+        .select(`username, full_name`)
         .eq('id', session?.user.id)
         .single()
       if (error && status !== 406) {
@@ -30,8 +29,7 @@ export default function Account({ session }: { session: Session }) {
 
       if (data) {
         setUsername(data.username)
-        setWebsite(data.website)
-        setAvatarUrl(data.avatar_url)
+        setFullName(data.full_name)
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -44,12 +42,10 @@ export default function Account({ session }: { session: Session }) {
 
   async function updateProfile({
     username,
-    website,
-    avatar_url,
+    full_name,
   }: {
     username: string
-    website: string
-    avatar_url: string
+    full_name: string
   }) {
     try {
       setLoading(true)
@@ -58,12 +54,11 @@ export default function Account({ session }: { session: Session }) {
       const updates = {
         id: session?.user.id,
         username,
-        website,
-        avatar_url,
+        full_name,
         updated_at: new Date(),
       }
 
-      const { error } = await supabase.from('profiles').upsert(updates)
+      const { error } = await supabase.from('users').upsert(updates)
 
       if (error) {
         throw error
@@ -83,22 +78,22 @@ export default function Account({ session }: { session: Session }) {
         <Input label="Email" value={session?.user?.email} disabled />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Username" value={username || ''} onChangeText={(text) => setUsername(text)} />
+        <Input label="Usuario" value={username || ''} onChangeText={(text) => setUsername(text)} />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Website" value={website || ''} onChangeText={(text) => setWebsite(text)} />
+        <Input label="Nombre Completo" value={fullName || ''} onChangeText={(text) => setFullName(text)} />
       </View>
 
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Button
-          title={loading ? 'Loading ...' : 'Update'}
-          onPress={() => updateProfile({ username, website, avatar_url: avatarUrl })}
+          title={loading ? 'Cargando ...' : 'Actualizar'}
+          onPress={() => updateProfile({ username, full_name: fullName })}
           disabled={loading}
         />
       </View>
 
       <View style={styles.verticallySpaced}>
-        <Button title="Sign Out" onPress={() => supabase.auth.signOut()} />
+        <Button title="Cerrar Sesión" onPress={() => supabase.auth.signOut()} />
       </View>
     </View>
   )
