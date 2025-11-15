@@ -5,11 +5,13 @@
   "license": "ISC",
   "author": "",
   "type": "commonjs",
-  "main": "app.js",
+  "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0"
   }
 }
