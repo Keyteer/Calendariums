@@ -1,5 +1,4 @@
 export default {
   testEnvironment: "node",
-  setupFiles: ["dotenv/config"],
-  transform: {},
+  setupFiles: ["<rootDir>/jest.setup.js"]
 };
