@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-import { Alert, StyleSheet, View, TouchableOpacity, Text } from 'react-native'
+import { Alert, StyleSheet, View, TouchableOpacity, Text, TextInput } from 'react-native'
 import { supabase } from '../services/supabase'
-import { Input } from '@rneui/themed'
 
 type AuthProps = {
   onBackPress: () => void;
@@ -66,39 +65,56 @@ export default function Auth({ onBackPress }: AuthProps) {
 
       {isSignUp && (
         <>
-          <Input
-            label="Nombre Completo"
-            onChangeText={setFullName}
-            value={fullName}
-            placeholder="Juan Pérez"
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Nombre Completo</Text>
+            <TextInput
+              style={styles.input}
+              onChangeText={setFullName}
+              value={fullName}
+              placeholder="Juan Pérez"
+              placeholderTextColor="#999"
+            />
+          </View>
 
-          <Input
-            label="Usuario"
-            onChangeText={setUsername}
-            value={username}
-            autoCapitalize="none"
-            placeholder="juanperez"
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Usuario</Text>
+            <TextInput
+              style={styles.input}
+              onChangeText={setUsername}
+              value={username}
+              autoCapitalize="none"
+              placeholder="juanperez"
+              placeholderTextColor="#999"
+            />
+          </View>
         </>
       )}
 
-      <Input
-        label="Correo"
-        onChangeText={setEmail}
-        value={email}
-        autoCapitalize="none"
-        placeholder="email@calendariums.com"
-      />
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Correo</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={setEmail}
+          value={email}
+          autoCapitalize="none"
+          placeholder="email@calendariums.com"
+          placeholderTextColor="#999"
+          keyboardType="email-address"
+        />
+      </View>
 
-      <Input
-        label="Contraseña"
-        onChangeText={setPassword}
-        value={password}
-        secureTextEntry={true}
-        placeholder="Contraseña"
-        autoCapitalize="none"
-      />
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Contraseña</Text>
+        <TextInput
+          style={styles.input}
+          onChangeText={setPassword}
+          value={password}
+          secureTextEntry={true}
+          placeholder="Contraseña"
+          placeholderTextColor="#999"
+          autoCapitalize="none"
+        />
+      </View>
       
 
       {!isSignUp ? (
@@ -159,6 +175,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     alignSelf: 'center',
     marginBottom: 20,
+    color: '#333',
+  },
+
+  inputContainer: {
+    marginBottom: 16,
+  },
+
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
     color: '#333',
   },
 
