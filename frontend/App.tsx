@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from './utils/supabase'
+import { supabase } from './services/supabase'
 import Auth from './components/Auth'
 import MainPage from './components/MainPage'
 import { View } from 'react-native'
