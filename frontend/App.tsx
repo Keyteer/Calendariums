@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './services/supabase'
 import Auth from './components/Auth'
 import LoginPage from './components/LoginPage'
-import MainPage from './components/MainPage'
+import SimpleNavigator from './components/SimpleNavigator'
 import { View } from 'react-native'
 import { Session } from '@supabase/supabase-js'
 
@@ -33,10 +33,10 @@ export default function App() {
   // Si no se hace esto se muere el LoginPage rip
   if (loading) return null
 
-  // If user is logged in, show main page
+  // If user is logged in, show simple navigator with tabs
   if (session?.user) {
     return (
-      <MainPage
+      <SimpleNavigator
         key={session.user.id}
         session={session}
       />

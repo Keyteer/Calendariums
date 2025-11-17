@@ -32,9 +32,10 @@ export function buildUserCalendar(events, rangeStart, rangeEnd) {
         title: occ.base_event.title,
         description: occ.base_event.description,
         location: occ.base_event.location,
-        start: occ.start.toISO(),
-        end: occ.end.toISO(),
-        event_type: occ.base_event.event_types,
+        start_datetime: occ.start.toISO(),
+        end_datetime: occ.end.toISO(),
+        event_types: occ.base_event.event_types,
+        created_by_ai: occ.base_event.created_by_ai,
         is_recurring_instance: true
       });
     });
@@ -44,7 +45,7 @@ export function buildUserCalendar(events, rangeStart, rangeEnd) {
     base: baseEvents,
     recurring: expanded,
     all: [...baseEvents, ...expanded].sort(
-      (a, b) => new Date(a.start) - new Date(b.start)
+      (a, b) => new Date(a.start_datetime) - new Date(b.start_datetime)
     )
   };
 }

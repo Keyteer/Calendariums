@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
-import { StyleSheet, View, Alert } from 'react-native'
-import { Button, Input } from '@rneui/themed'
+import { StyleSheet, View, Alert, Text, TextInput, TouchableOpacity } from 'react-native'
 import { Session } from '@supabase/supabase-js'
 
 export default function Account({ session }: { session: Session }) {
@@ -75,25 +74,51 @@ export default function Account({ session }: { session: Session }) {
   return (
     <View style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Input label="Email" value={session?.user?.email} disabled />
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={[styles.input, styles.inputDisabled]}
+          value={session?.user?.email}
+          editable={false}
+        />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Usuario" value={username || ''} onChangeText={(text) => setUsername(text)} />
+        <Text style={styles.label}>Usuario</Text>
+        <TextInput
+          style={styles.input}
+          value={username || ''}
+          onChangeText={(text: string) => setUsername(text)}
+          placeholder="Ingresa tu usuario"
+        />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Nombre Completo" value={fullName || ''} onChangeText={(text) => setFullName(text)} />
-      </View>
-
-      <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Button
-          title={loading ? 'Cargando ...' : 'Actualizar'}
-          onPress={() => updateProfile({ username, full_name: fullName })}
-          disabled={loading}
+        <Text style={styles.label}>Nombre Completo</Text>
+        <TextInput
+          style={styles.input}
+          value={fullName || ''}
+          onChangeText={(text: string) => setFullName(text)}
+          placeholder="Ingresa tu nombre completo"
         />
       </View>
 
+      <View style={[styles.verticallySpaced, styles.mt20]}>
+        <TouchableOpacity
+          style={[styles.button, styles.buttonPrimary, loading && styles.buttonDisabled]}
+          onPress={() => updateProfile({ username, full_name: fullName })}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? 'Cargando ...' : 'Actualizar'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.verticallySpaced}>
-        <Button title="Cerrar Sesión" onPress={() => supabase.auth.signOut()} />
+        <TouchableOpacity
+          style={[styles.button, styles.buttonDanger]}
+          onPress={() => supabase.auth.signOut()}
+        >
+          <Text style={styles.buttonText}>Cerrar Sesión</Text>
+        </TouchableOpacity>
       </View>
     </View>
   )
@@ -101,8 +126,10 @@ export default function Account({ session }: { session: Session }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 40,
-    padding: 12,
+    flex: 1,
+    backgroundColor: '#FEFAE0',
+    padding: 20,
+    paddingTop: 40,
   },
   verticallySpaced: {
     paddingTop: 4,
@@ -111,5 +138,46 @@ const styles = StyleSheet.create({
   },
   mt20: {
     marginTop: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    color: '#333',
+  },
+  inputDisabled: {
+    backgroundColor: '#f0f0f0',
+    color: '#666',
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonPrimary: {
+    backgroundColor: '#6A7441',
+  },
+  buttonDanger: {
+    backgroundColor: '#dc3545',
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 })
