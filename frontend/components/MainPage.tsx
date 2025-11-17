@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
-import { StyleSheet, View, Text } from 'react-native'
-import { Button } from '@rneui/themed'
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
+
 import { Session } from '@supabase/supabase-js'
 
 export default function MainPage({ session }: { session: Session }) {
@@ -20,14 +20,12 @@ export default function MainPage({ session }: { session: Session }) {
       const { data, error } = await supabase
         .from('users')
         .select('full_name')
-        .eq('id', session?.user.id)
+        .eq('id', session.user.id)
         .single()
 
       if (error) throw error
 
-      if (data) {
-        setFullName(data.full_name || 'Usuario')
-      }
+      setFullName(data?.full_name || 'Usuario')
     } catch (error) {
       console.error('Error loading user data:', error)
       setFullName('Usuario')
@@ -38,15 +36,20 @@ export default function MainPage({ session }: { session: Session }) {
 
   return (
     <View style={styles.container}>
+      
+
       {loading ? (
         <Text style={styles.greeting}>Cargando...</Text>
       ) : (
         <Text style={styles.greeting}>Hola {fullName}</Text>
       )}
 
-      <View style={styles.signOutContainer}>
-        <Button title="Cerrar Sesión" onPress={() => supabase.auth.signOut()} />
-      </View>
+      <TouchableOpacity 
+        style={styles.myButton}
+        onPress={() => supabase.auth.signOut()}
+      >
+        <Text style={styles.myButtonText}>Cerrar Sesión</Text>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -56,15 +59,36 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 12,
+    backgroundColor: '#FEFAE0',
+    paddingHorizontal: 20,
   },
+
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 60,
+    color: '#333',
+  },
+
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 40,
+    color: '#333',
   },
-  signOutContainer: {
-    marginTop: 40,
-    width: '80%',
+
+  myButton: {
+    backgroundColor: '#6A7441',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 50,
+    alignItems: 'center',
+    width: 200,
+  },
+
+  myButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 })
