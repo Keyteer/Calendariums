@@ -4,9 +4,10 @@
   "description": "Calendariums",
   "license": "ISC",
   "author": "",
-  "main": "src/app.js",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
+    "start": "node src/server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
