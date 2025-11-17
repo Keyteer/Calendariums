@@ -1,7 +1,3 @@
-import Constants from "expo-constants";
-
-const API_HOST = Constants.expoConfig?.hostUri?.split(":")[0];
-
 // export const API_URL = `http://${API_HOST}:6969`;
 export const API_URL = `http://192.168.1.12:6969`;
 
