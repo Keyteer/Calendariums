@@ -9,7 +9,7 @@ services:
     ports:
       - "6969:6969"
     environment:
-      - NODE_ENVenv
+      - NODE_ENV=env
       - PORT=6969
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
