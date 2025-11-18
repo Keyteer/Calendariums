@@ -9,10 +9,10 @@ services:
     ports:
       - "6969:6969"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=env
       - PORT=6969
       - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/calendarium
       - OLLAMA_HOST=http://ollama:11434
     volumes:
