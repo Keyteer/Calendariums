@@ -1,5 +1,4 @@
-// ⚠️ Cambia esta IP si tu red cambia. Tu IP actual: ipconfig (Windows) o ifconfig (Mac/Linux)
-export const API_URL = `http://192.168.100.3:6969`;
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || `http://localhost:6969`;
 
 export async function apiGet(path: string) {
   const res = await fetch(`${API_URL}${path}`);
