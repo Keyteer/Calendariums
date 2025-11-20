@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { Session } from '@supabase/supabase-js'
 
 // Importar las pantallas
 import MainPage from './MainPage'
@@ -11,25 +10,21 @@ import Account from './Account'
 
 type Screen = 'home' | 'groups' | 'chat' | 'profile'
 
-type SimpleNavigatorProps = {
-  session: Session
-}
-
-export default function SimpleNavigator({ session }: SimpleNavigatorProps) {
+export default function SimpleNavigator() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home')
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
-        return <MainPage session={session} />
+        return <MainPage />
       case 'groups':
-        return <Groups session={session} />
+        return <Groups />
       case 'chat':
-        return <ChatAI session={session} />
+        return <ChatAI />
       case 'profile':
-        return <Account session={session} />
+        return <Account />
       default:
-        return <MainPage session={session} />
+        return <MainPage />
     }
   }
 

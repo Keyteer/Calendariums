@@ -1,158 +1,417 @@
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../services/supabase'
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native'
-import { Session } from '@supabase/supabase-js'
-import { getEvents } from '../services/events'
+import React, { useState } from 'react'
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native'
+import { Calendar, DateData } from 'react-native-calendars'
+import { Feather } from '@expo/vector-icons'
+import { useApp, Event } from '../context/AppContext'
+import CreateEventModal from './CreateEventModal'
+import { deleteEvent } from '../services/events'
 
-export default function MainPage({ session }: { session: Session }) {
-  const [loading, setLoading] = useState(true)
-  const [fullName, setFullName] = useState('')
-  const [events, setEvents] = useState<any[]>([])
+export default function MainPage() {
+  const { user, events, selectedDate, setSelectedDate, loading, refreshEvents } = useApp()
+  const [modalVisible, setModalVisible] = useState(false)
 
-  useEffect(() => {
-    if (session) getUserData()
-  }, [session])
+  // Filtrar eventos del día seleccionado
+  const getEventsForDate = (date: string): Event[] => {
+    return events.filter((event) => {
+      const eventDate = new Date(event.start_datetime).toISOString().split('T')[0]
+      return eventDate === date
+    }).sort((a, b) => {
+      return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+    })
+  }
 
-  async function getUserData() {
-    try {
-      setLoading(true)
-      if (!session?.user) throw new Error('No user on the session!')
+  const handleDeleteEvent = (eventId: string, eventTitle: string) => {
+    Alert.alert(
+      'Eliminar evento',
+      `¿Estás seguro de que deseas eliminar "${eventTitle}"?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteEvent(eventId)
+            if (result.error) {
+              Alert.alert('Error', 'No se pudo eliminar el evento')
+            } else {
+              await refreshEvents()
+            }
+          },
+        },
+      ]
+    )
+  }
 
-      // Prioridad 1: Intentar obtener de la tabla users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('full_name')
-        .eq('id', session.user.id)
-        .single()
+  const dayEvents = getEventsForDate(selectedDate)
 
-      if (userData && !userError) {
-        // ✅ Usuario existe en la tabla
-        setFullName(userData.full_name || 'Usuario')
-      } else {
-        // ⚠️ Usuario no existe en tabla, usar metadata
-        const metadataName = session.user.user_metadata?.full_name;
-        const emailName = session.user.email?.split('@')[0];
+  // Marcar días con eventos en el calendario
+  const getMarkedDates = () => {
+    const marked: any = {}
 
-        console.log('User not in table, using metadata:', {
-          full_name: metadataName,
-          email: session.user.email,
-          metadata: session.user.user_metadata
-        });
-
-        setFullName(metadataName || emailName || 'Usuario')
-
-        // Intentar crear el usuario en la tabla para la próxima vez
-        if (metadataName || emailName) {
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({
-              id: session.user.id,
-              username: session.user.user_metadata?.username || emailName,
-              full_name: metadataName || emailName || 'Usuario'
-            })
-
-          if (insertError) {
-            console.error('Error creating user in table:', insertError)
-          } else {
-            console.log('✅ User created in table successfully')
-          }
-        }
+    events.forEach((event) => {
+      const date = new Date(event.start_datetime).toISOString().split('T')[0]
+      if (!marked[date]) {
+        marked[date] = { marked: true, dotColor: event.event_types?.color || '#3B82F6' }
       }
+    })
 
-      // Obtener eventos del backend (con fechas)
-      const fetchedEvents = await getEvents(session.user.id)
-      console.log('Fetched events:', fetchedEvents)
-      setEvents(fetchedEvents?.events || [])
-    } catch (error) {
-      console.error('Error loading user data:', error)
-      // Último fallback
-      setFullName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuario')
-    } finally {
-      setLoading(false)
+    // Marcar el día seleccionado
+    marked[selectedDate] = {
+      ...marked[selectedDate],
+      selected: true,
+      selectedColor: '#606C38',
     }
+
+    return marked
+  }
+
+  const onDayPress = (day: DateData) => {
+    setSelectedDate(day.dateString)
+  }
+
+  const formatTime = (datetime: string) => {
+    const date = new Date(datetime)
+    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const formatSelectedDate = () => {
+    const date = new Date(selectedDate)
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    })
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Cargando...</Text>
+      </View>
+    )
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {loading ? (
-        <Text style={styles.greeting}>Cargando...</Text>
-      ) : (
-        <>
-          <Text style={styles.greeting}>Hola {fullName}</Text>
-          <View style={styles.eventsBox}>
-            <Text style={styles.eventsTitle}>Eventos</Text>
-            <ScrollView style={styles.eventsScroll}>
-              <Text selectable style={styles.eventsJson}>{JSON.stringify(events, null, 2)}</Text>
-            </ScrollView>
-          </View>
-          <TouchableOpacity
-            style={styles.signOutButton}
-            onPress={() => supabase.auth.signOut()}
-          >
-            <Text style={styles.signOutText}>Cerrar Sesión</Text>
-          </TouchableOpacity>
-        </>
-      )}
-    </ScrollView>
+    <View style={styles.container}>
+      {/* Header con saludo */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Hola {user?.full_name || 'Usuario'}</Text>
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Calendario */}
+        <View style={styles.calendarContainer}>
+          <Calendar
+            current={selectedDate}
+            onDayPress={onDayPress}
+            markedDates={getMarkedDates()}
+            theme={{
+              backgroundColor: '#FEFAE0',
+              calendarBackground: '#FFFFFF',
+              textSectionTitleColor: '#606C38',
+              selectedDayBackgroundColor: '#606C38',
+              selectedDayTextColor: '#ffffff',
+              todayTextColor: '#BC6C25',
+              dayTextColor: '#283618',
+              textDisabledColor: '#d9d9d9',
+              dotColor: '#606C38',
+              selectedDotColor: '#ffffff',
+              arrowColor: '#606C38',
+              monthTextColor: '#283618',
+              indicatorColor: '#606C38',
+              textDayFontWeight: '400',
+              textMonthFontWeight: 'bold',
+              textDayHeaderFontWeight: '600',
+              textDayFontSize: 14,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 12,
+            }}
+          />
+        </View>
+
+        {/* Planner del día */}
+        <View style={styles.plannerContainer}>
+          <Text style={styles.plannerTitle}>
+            {formatSelectedDate().charAt(0).toUpperCase() + formatSelectedDate().slice(1)}
+          </Text>
+
+          {dayEvents.length === 0 ? (
+            <View style={styles.noEventsContainer}>
+              <Feather name="calendar" size={48} color="#DDA15E" />
+              <Text style={styles.noEventsText}>No hay actividades agendadas hoy</Text>
+            </View>
+          ) : (
+            <View style={styles.eventsListContainer}>
+              {dayEvents.map((event) => (
+                <View
+                  key={event.id}
+                  style={[
+                    styles.eventCard,
+                    { borderLeftColor: event.event_types?.color || '#3B82F6' },
+                  ]}
+                >
+                  <View style={styles.eventHeader}>
+                    <View style={styles.eventTimeContainer}>
+                      <Text style={styles.eventTime}>
+                        {formatTime(event.start_datetime)}
+                      </Text>
+                      <Text style={styles.eventTimeSeparator}>-</Text>
+                      <Text style={styles.eventTime}>
+                        {formatTime(event.end_datetime)}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => handleDeleteEvent(event.id, event.title)}
+                      style={styles.deleteButton}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Feather name="trash-2" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.eventDetails}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+
+                    {event.event_types && (
+                      <View style={styles.eventTypeContainer}>
+                        <View
+                          style={[
+                            styles.eventTypeBadge,
+                            { backgroundColor: event.event_types.color + '20' },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.eventTypeText,
+                              { color: event.event_types.color },
+                            ]}
+                          >
+                            {event.event_types.name}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {event.location && (
+                      <View style={styles.eventLocationContainer}>
+                        <Feather name="map-pin" size={12} color="#6B7280" />
+                        <Text style={styles.eventLocation}>{event.location}</Text>
+                      </View>
+                    )}
+
+                    {event.description && (
+                      <Text style={styles.eventDescription} numberOfLines={2}>
+                        {event.description}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Botón flotante para agregar */}
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.8}
+        onPress={() => setModalVisible(true)}
+      >
+        <Feather name="plus" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Modal para crear evento */}
+      <CreateEventModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        preselectedDate={selectedDate}
+      />
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1,
     backgroundColor: '#FEFAE0',
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  loadingText: {
+    fontSize: 18,
+    color: '#606C38',
+    textAlign: 'center',
+    marginTop: 100,
+  },
+
+  header: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#FEFAE0',
   },
 
   greeting: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+    color: '#283618',
   },
 
-  eventsBox: {
-    maxHeight: 300,
-    width: '90%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fafafa',
-    marginTop: 8,
+  calendarContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
 
-  eventsTitle: {
+  plannerContainer: {
+    marginHorizontal: 16,
+    marginBottom: 100,
+  },
+
+  plannerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#283618',
+    marginBottom: 16,
+  },
+
+  noEventsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+
+  noEventsText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
+  },
+
+  eventsListContainer: {
+    gap: 12,
+  },
+
+  eventCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
-    fontSize: 16,
-    color: '#333',
   },
 
-  eventsScroll: {
-    maxHeight: 250,
+  eventTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
-  eventsJson: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: '#333',
+  deleteButton: {
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
   },
 
-  signOutButton: {
-    backgroundColor: '#dc3545',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginTop: 20,
+  eventTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#606C38',
   },
 
-  signOutText: {
-    color: 'white',
-    fontSize: 16,
+  eventTimeSeparator: {
+    marginHorizontal: 6,
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
+
+  eventDetails: {
+    gap: 6,
+  },
+
+  eventTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#283618',
+    marginBottom: 4,
+  },
+
+  eventTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  eventTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  eventTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  eventLocationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  eventLocation: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+
+  eventDescription: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#BC6C25',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 })

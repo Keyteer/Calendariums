@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserCalendar, createNewEvent } from "../controllers/events.controller.js";
+import { getUserCalendar, createNewEvent, deleteEvent } from "../controllers/events.controller.js";
 
 const router = Router();
 
@@ -8,5 +8,8 @@ router.get("/user/:userId", getUserCalendar);
 
 // POST /events
 router.post("/", createNewEvent);
+
+// DELETE /events/:id
+router.delete("/:id", deleteEvent);
 
 export default router;

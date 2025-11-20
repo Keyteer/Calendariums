@@ -4,10 +4,10 @@ import Auth from './components/Auth'
 import LoginPage from './components/LoginPage'
 import SimpleNavigator from './components/SimpleNavigator'
 import { View } from 'react-native'
-import { Session } from '@supabase/supabase-js'
+import { AppProvider, useApp } from './context/AppContext'
 
-export default function App() {
-  const [session, setSession] = useState<Session | null>(null)
+function AppContent() {
+  const { session, setSession } = useApp()
   const [loading, setLoading] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
 
@@ -38,7 +38,6 @@ export default function App() {
     return (
       <SimpleNavigator
         key={session.user.id}
-        session={session}
       />
     )
   }
@@ -52,5 +51,13 @@ export default function App() {
         <LoginPage onLoginPress={() => setShowAuth(true)} />
       )}
     </View>
+  )
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   )
 }

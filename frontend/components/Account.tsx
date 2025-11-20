@@ -1,43 +1,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
 import { StyleSheet, View, Alert, Text, TextInput, TouchableOpacity } from 'react-native'
-import { Session } from '@supabase/supabase-js'
+import { useApp } from '../context/AppContext'
 
-export default function Account({ session }: { session: Session }) {
-  const [loading, setLoading] = useState(true)
+export default function Account() {
+  const { session, user, refreshUser } = useApp()
+  const [loading, setLoading] = useState(false)
   const [username, setUsername] = useState('')
   const [fullName, setFullName] = useState('')
 
   useEffect(() => {
-    if (session) getProfile()
-  }, [session])
-
-  async function getProfile() {
-    try {
-      setLoading(true)
-      if (!session?.user) throw new Error('No user on the session!')
-
-      const { data, error, status } = await supabase
-        .from('users')
-        .select(`username, full_name`)
-        .eq('id', session?.user.id)
-        .single()
-      if (error && status !== 406) {
-        throw error
-      }
-
-      if (data) {
-        setUsername(data.username)
-        setFullName(data.full_name)
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert(error.message)
-      }
-    } finally {
-      setLoading(false)
+    if (user) {
+      setUsername(user.username)
+      setFullName(user.full_name)
     }
-  }
+  }, [user])
 
   async function updateProfile({
     username,
@@ -51,7 +28,7 @@ export default function Account({ session }: { session: Session }) {
       if (!session?.user) throw new Error('No user on the session!')
 
       const updates = {
-        id: session?.user.id,
+        id: session.user.id,
         username,
         full_name,
         updated_at: new Date(),
@@ -62,6 +39,10 @@ export default function Account({ session }: { session: Session }) {
       if (error) {
         throw error
       }
+
+      // Actualizar el contexto
+      await refreshUser()
+      Alert.alert('Perfil actualizado correctamente')
     } catch (error) {
       if (error instanceof Error) {
         Alert.alert(error.message)
