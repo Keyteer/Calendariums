@@ -13,7 +13,8 @@ export default function MainPage() {
   // Filtrar eventos del día seleccionado
   const getEventsForDate = (date: string): Event[] => {
     return events.filter((event) => {
-      const eventDate = new Date(event.start_datetime).toISOString().split('T')[0]
+      const eventDateTime = new Date(event.start_datetime)
+      const eventDate = `${eventDateTime.getFullYear()}-${String(eventDateTime.getMonth() + 1).padStart(2, '0')}-${String(eventDateTime.getDate()).padStart(2, '0')}`
       return eventDate === date
     }).sort((a, b) => {
       return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
@@ -52,7 +53,9 @@ export default function MainPage() {
     const marked: any = {}
 
     events.forEach((event) => {
-      const date = new Date(event.start_datetime).toISOString().split('T')[0]
+      // Usar fecha local, no UTC
+      const eventDateTime = new Date(event.start_datetime)
+      const date = `${eventDateTime.getFullYear()}-${String(eventDateTime.getMonth() + 1).padStart(2, '0')}-${String(eventDateTime.getDate()).padStart(2, '0')}`
       if (!marked[date]) {
         marked[date] = { marked: true, dotColor: event.event_types?.color || '#3B82F6' }
       }
@@ -78,7 +81,7 @@ export default function MainPage() {
   }
 
   const formatSelectedDate = () => {
-    const date = new Date(selectedDate)
+    const date = new Date(`${selectedDate}T12:00:00`)
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       day: 'numeric',

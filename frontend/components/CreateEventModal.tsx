@@ -48,10 +48,9 @@ export default function CreateEventModal({
     if (visible) {
       const initialDate = preselectedDate || selectedDate
       setDate(initialDate)
-      // Establecer hora por defecto (ahora + 1 hora)
       const now = new Date()
-      const startHour = now.getHours() + 1
-      const endHour = startHour + 1
+      const startHour = (now.getHours() + 1) % 24
+      const endHour = (startHour + 1) % 24
       setStartTime(`${String(startHour).padStart(2, '0')}:00`)
       setEndTime(`${String(endHour).padStart(2, '0')}:00`)
     }
