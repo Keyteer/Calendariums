@@ -85,3 +85,21 @@ export async function createEvent(eventData) {
 
   return { data: event, error: null };
 }
+
+/**
+ * Elimina un evento por ID
+ */
+export async function deleteEventById(eventId) {
+  const { data, error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data, error: null };
+}

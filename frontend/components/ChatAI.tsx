@@ -1,8 +1,7 @@
 import React from 'react'
 import { StyleSheet, View, Text } from 'react-native'
-import { Session } from '@supabase/supabase-js'
 
-export default function ChatAI({ session }: { session: Session }) {
+export default function ChatAI() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Chat AI</Text>

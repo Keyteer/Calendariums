@@ -1,4 +1,4 @@
-import { getEventsByUserId, createEvent } from "../services/events.service.js";
+import { getEventsByUserId, createEvent, deleteEventById } from "../services/events.service.js";
 import { buildUserCalendar } from "../utils/events.js";
 
 export async function getUserCalendar(req, res) {
@@ -69,6 +69,27 @@ export async function createNewEvent(req, res) {
 
   return res.status(201).json({
     message: "Event created successfully",
+    event: data
+  });
+}
+
+export async function deleteEvent(req, res) {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({
+      error: "Event ID is required"
+    });
+  }
+
+  const { data, error } = await deleteEventById(id);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    message: "Event deleted successfully",
     event: data
   });
 }

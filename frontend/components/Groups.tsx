@@ -1,8 +1,7 @@
 import React from 'react'
 import { StyleSheet, View, Text } from 'react-native'
-import { Session } from '@supabase/supabase-js'
 
-export default function Groups({ session }: { session: Session }) {
+export default function Groups() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Grupos</Text>
