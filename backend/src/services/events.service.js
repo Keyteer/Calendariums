@@ -1,4 +1,4 @@
-import { supabase } from "../config/supabase.js";
+import { supabase } from "../config/supabaseClient.js";
 
 /**
  * Obtiene todos los eventos de un usuario
