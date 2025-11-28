@@ -1,4 +1,4 @@
-import { getEventsByUserId, createEvent, deleteEventById } from "../services/events.service.js";
+import { getEventsByUserId, createEvent, deleteEventById, addParticipantToEvent } from "../services/events.service.js";
 import { buildUserCalendar } from "../utils/events.js";
 
 export async function getUserCalendar(req, res) {
@@ -91,5 +91,30 @@ export async function deleteEvent(req, res) {
   return res.json({
     message: "Event deleted successfully",
     event: data
+  });
+}
+
+export async function addEventParticipant(req, res) {
+  const { id } = req.params; // event id
+  const { user_id, status } = req.body;
+
+  if (!id || !user_id) {
+    return res.status(400).json({
+      error: "Missing required fields: event id param, user_id in body"
+    });
+  }
+
+  const { data, error } = await addParticipantToEvent(id, user_id, status);
+
+  if (error) {
+    if (error.code === "duplicate") {
+      return res.status(409).json({ error: error.message, participant: data });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.status(201).json({
+    message: "Participant added",
+    participant: data
   });
 }

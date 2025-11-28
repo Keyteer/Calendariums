@@ -103,3 +103,40 @@ export async function deleteEventById(eventId) {
 
   return { data, error: null };
 }
+
+/**
+ * Añade un participante a un evento
+ */
+export async function addParticipantToEvent(eventId, userId, status = "pending") {
+  // Comprobar si ya existe
+  const { data: existing, error: existingError } = await supabase
+    .from("event_participants")
+    .select("id, status")
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingError) {
+    return { data: null, error: existingError };
+  }
+
+  if (existing) {
+    return { data: existing, error: { message: "Participant already added", code: "duplicate" } };
+  }
+
+  const { data, error } = await supabase
+    .from("event_participants")
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      status
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data, error: null };
+}
