@@ -1,5 +1,6 @@
 import * as groupsService from "../services/groups.service.js";
-import { createEvent, addParticipantToEvent } from "../services/events.service.js";
+import { createEvent, addParticipantToEvent, getEventsByUserId } from "../services/events.service.js";
+import { buildUserCalendar } from "../utils/events.js";
 
 export async function createNewGroup(req, res) {
   const { name, description, creator_id } = req.body;
@@ -217,5 +218,62 @@ export async function createGroupEvent(req, res) {
   return res.status(201).json({
     message: "Group event created successfully",
     event
+  });
+}
+
+export async function getGroupActivities(req, res) {
+  const { groupId } = req.params;
+  const { start, end } = req.query;
+
+  if (!groupId) {
+    return res.status(400).json({ error: "Group ID is required" });
+  }
+
+  if (!start || !end) {
+    return res.status(400).json({
+      error: "Missing ?start=YYYY-MM-DD&end=YYYY-MM-DD"
+    });
+  }
+
+  // Obtener miembros del grupo
+  const { data: membersData, error: membersError } = await groupsService.getGroupMembers(groupId);
+  if (membersError) {
+    return res.status(500).json({ error: membersError.message });
+  }
+
+  // Agregar eventos de cada miembro (solo status accepted)
+  const activitiesByMember = [];
+  
+  for (const member of membersData) {
+    const { data, error } = await getEventsByUserId(member.user_id);
+    if (error) {
+      console.error(`Error fetching events for user ${member.user_id}:`, error);
+      continue;
+    }
+    
+    const accepted = (data || []).filter(evnt => evnt.status === "accepted");
+    
+    const calendar = buildUserCalendar(accepted, start, end);
+    const { all } = calendar;
+
+    // Excluir título, descripción, etc.
+    const sanitized = all.map(ev => ({
+      event_id: ev.event_id ?? ev.id,
+      start_datetime: ev.start_datetime,
+      end_datetime: ev.end_datetime,
+      created_by_ai: ev.created_by_ai,
+      is_recurring_instance: ev.is_recurring_instance
+    }));
+
+    activitiesByMember.push({
+      user_id: member.user_id,
+      role: member.role,
+      activities: sanitized
+    });
+  }
+
+  return res.json({
+    range: { start, end },
+    members: activitiesByMember
   });
 }

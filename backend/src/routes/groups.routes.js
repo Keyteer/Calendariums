@@ -7,8 +7,11 @@ import {
   removeUserFromGroup,
   updateGroupMemberRole,
   createGroupEvent,
+  getGroupActivities,
   deleteGroup
-} from "../controllers/groups.controller.js";const router = Router();
+} from "../controllers/groups.controller.js";
+
+const router = Router();
 
 // GET /groups/user/:userId
 router.get("/user/:userId", getUserGroups);
@@ -28,8 +31,11 @@ router.delete("/members", removeUserFromGroup);
 // PATCH /groups/members
 router.patch("/members", updateGroupMemberRole);
 
-// POST /groups/:groupId/newEvent
-router.post("/:groupId/newEvent", createGroupEvent);
+// POST /groups/:groupId/events
+router.post("/:groupId/events", createGroupEvent);
+
+// GET /groups/:groupId/events
+router.get("/:groupId/events", getGroupActivities);
 
 // DELETE /groups/:id
 router.delete("/:id", deleteGroup);
