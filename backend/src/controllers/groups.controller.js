@@ -105,6 +105,27 @@ export async function removeUserFromGroup(req, res) {
   });
 }
 
+export async function updateGroupMemberRole(req, res) {
+  const { groupId, userId, newRole } = req.body;
+
+  // Validaciones
+  if (!groupId || !userId || !newRole) {
+    return res.status(400).json({
+      error: "Missing required fields: groupId, userId, newRole"
+    });
+  }
+
+  const { data, error } = await groupsService.updateMemberRole(groupId, userId, newRole);
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    message: "Member role updated successfully",
+    member: data
+  });
+}
+
 export async function deleteGroup(req, res) {
   const { id } = req.params;
 

@@ -5,6 +5,7 @@ import {
   updateGroupInfo,
   addUserToGroup,
   removeUserFromGroup,
+  updateGroupMemberRole,
   deleteGroup
 } from "../controllers/groups.controller.js";const router = Router();
 
@@ -22,6 +23,9 @@ router.post("/members", addUserToGroup);
 
 // DELETE /groups/members
 router.delete("/members", removeUserFromGroup);
+
+// PATCH /groups/members
+router.patch("/members", updateGroupMemberRole);
 
 // DELETE /groups/:id
 router.delete("/:id", deleteGroup);
