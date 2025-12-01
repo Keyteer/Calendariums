@@ -181,6 +181,13 @@ export async function createGroupEvent(req, res) {
     });
   }
 
+  // Obtener miembros del grupo
+  const { data: membersData, error: membersError } = await groupsService.getGroupMembers(groupId);
+
+  if (membersError) {
+    return res.status(500).json({ error: membersError.message });
+  }
+
   // Crear evento
   const { data: event, error: eventError } = await createEvent({
     title,
@@ -195,13 +202,6 @@ export async function createGroupEvent(req, res) {
 
   if (eventError) {
     return res.status(500).json({ error: eventError.message });
-  }
-
-  // Obtener miembros del grupo
-  const { data: membersData, error: membersError } = await groupsService.getGroupMembers(groupId);
-
-  if (membersError) {
-    return res.status(500).json({ error: membersError.message });
   }
 
   // Agregar miembros del grupo como participantes del evento
