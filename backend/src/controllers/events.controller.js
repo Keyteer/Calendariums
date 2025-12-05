@@ -101,23 +101,13 @@ export async function createNewEvent(req, res) {
 export async function deleteEvent(req, res) {
   const { id } = req.params;
 
-  if (!id) {
-    return res.status(400).json({
-      error: "Event ID is required"
-    });
-  }
-
   const { data, error } = await deleteEventById(id);
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
-  }
+  if (error) return res.status(500).json({ error: error.message });
 
-  return res.json({
-    message: "Event deleted successfully",
-    event: data
-  });
+  res.json({ message: "Event deleted", event: data });
 }
+
 
 export async function addEventParticipant(req, res) {
   const { id } = req.params; // event id

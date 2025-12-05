@@ -113,20 +113,58 @@ export async function createEvent(eventData) {
 /**
  * Elimina un evento por ID
  */
-export async function deleteEventById(eventId) {
+export async function deleteEventById(inputId) {
+  // Intentar obtener evento por ID
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", inputId)
+    .single();
+  let eventId = inputId;
+  // si no existe el evento
+  if (!event && !eventError) {
+    // Buscar si el inputId corresponde a una regla de recurrencia
+    const { data: recurrence, error: recurrenceError } = await supabase
+      .from("recurrence_rules")
+      .select("event_id")
+      .eq("id", inputId)
+      .single();
+    if (recurrenceError || !recurrence) {
+      return { data: null, error: { message: "Event or recurrence not found" } };
+    }
+    eventId = recurrence.event_id;
+  } else if (eventError) {
+    return { data: null, error: eventError };
+  }
+  // Eliminar recurrencias del evento
+  const { error: rrError } = await supabase
+    .from("recurrence_rules")
+    .delete()
+    .eq("event_id", eventId);
+  if (rrError) {
+    return { data: null, error: rrError };
+  }
+  // Eliminar participantes del evento
+  const { error: epError } = await supabase
+    .from("event_participants")
+    .delete()
+    .eq("event_id", eventId);
+  if (epError) {
+    return { data: null, error: epError };
+  }
+  // Eliminar evento
   const { data, error } = await supabase
     .from("events")
     .delete()
     .eq("id", eventId)
     .select()
     .single();
-
   if (error) {
     return { data: null, error };
   }
-
   return { data, error: null };
 }
+
 
 /**
  * Añade un participante a un evento
