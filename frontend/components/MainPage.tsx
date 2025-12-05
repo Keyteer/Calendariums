@@ -4,11 +4,13 @@ import { Calendar, DateData } from 'react-native-calendars'
 import { Feather } from '@expo/vector-icons'
 import { useApp, Event } from '../context/AppContext'
 import CreateEventModal from './CreateEventModal'
+import AiSuggestionModal from './AiSuggestionModal'
 import { deleteEvent } from '../services/events'
 
 export default function MainPage() {
   const { user, events, selectedDate, setSelectedDate, loading, refreshEvents } = useApp()
   const [modalVisible, setModalVisible] = useState(false)
+  const [aiModalVisible, setAiModalVisible] = useState(false)
 
   // Filtrar eventos del día seleccionado
   const getEventsForDate = (date: string): Event[] => {
@@ -220,19 +222,35 @@ export default function MainPage() {
       </ScrollView>
 
       {/* Botón flotante para agregar */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => setModalVisible(true)}
-      >
-        <Feather name="plus" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+      <View style={styles.fabContainer}>
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: '#606C38', marginBottom: 16 }]}
+          activeOpacity={0.8}
+          onPress={() => setAiModalVisible(true)}
+        >
+          <Feather name="cpu" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.8}
+          onPress={() => setModalVisible(true)}
+        >
+          <Feather name="plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
 
       {/* Modal para crear evento */}
       <CreateEventModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         preselectedDate={selectedDate}
+      />
+
+      {/* Modal para sugerencias AI */}
+      <AiSuggestionModal
+        visible={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
       />
     </View>
   )
@@ -401,10 +419,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  fab: {
+  fabContainer: {
     position: 'absolute',
     bottom: 24,
     right: 24,
+    alignItems: 'center',
+  },
+  fab: {
     width: 60,
     height: 60,
     borderRadius: 30,
