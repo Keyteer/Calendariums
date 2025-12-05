@@ -33,8 +33,17 @@ export async function getEventsByUserId(userId) {
  * Crea un nuevo evento
  */
 export async function createEvent(eventData) {
-  const { title, description, event_type_id, creator_id, start_datetime, end_datetime, location, recurrence_rule } = eventData;
-
+  const {
+    title,
+    description,
+    event_type_id,
+    creator_id,
+    start_datetime,
+    end_datetime,
+    location,
+    recurrence_rules
+  } = eventData;
+  
   // Insertar el evento principal
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -68,21 +77,36 @@ export async function createEvent(eventData) {
     console.error("Error adding creator as participant:", participantError);
   }
 
-  // Si hay regla de recurrencia, agregarla
-  if (recurrence_rule) {
+  // Si hay reglas de recurrencia (múltiples)
+  if (Array.isArray(recurrence_rules) && recurrence_rules.length > 0) {
+    const inserts = recurrence_rules.map(rule => {
+      // Soportar regla como string o como objeto
+      if (typeof rule === "string") {
+        return {
+          event_id: event.id,
+          rrule: rule,
+          timezone: "UTC"
+        };
+      }
+
+      // Si es objeto { rrule, timezone }
+      return {
+        event_id: event.id,
+        rrule: rule.rrule,
+        timezone: rule.timezone || "UTC"
+      };
+    });
+
     const { error: rruleError } = await supabase
       .from("recurrence_rules")
-      .insert({
-        event_id: event.id,
-        rrule: recurrence_rule.rrule,
-        timezone: recurrence_rule.timezone || "UTC"
-      });
+      .insert(inserts);
 
     if (rruleError) {
-      console.error("Error adding recurrence rule:", rruleError);
+      console.error("ERROR RRULE:", rruleError);
+    } else {
+      console.log("RRULES INSERTADAS:", inserts.length);
     }
   }
-
   return { data: event, error: null };
 }
 
