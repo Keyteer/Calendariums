@@ -71,37 +71,3 @@ export function expandEvent(event, rangeStart, rangeEnd) {
 
   return occurrences;
 }
-
-
-
-/**
- * Devuelve SOLO la próxima ocurrencia futura del evento.
- */
-export function getNextOccurrence(event, from = DateTime.utc()) {
-  if (!event.recurrence_rules) return null;
-
-  const duration = DateTime.fromISO(event.end_datetime).diff(DateTime.fromISO(event.start_datetime));
-
-  let next = null;
-
-  for (const rule of event.recurrence_rules) {
-    const rrule = buildRRuleInstance(rule, event);
-    const nextDate = rrule.after(from.toJSDate(), true);
-
-    if (!nextDate) continue;
-
-    const start = DateTime.fromJSDate(nextDate).setZone(rule.timezone || "UTC");
-    const end = start.plus(duration);
-
-    if (!next || start < next.start) {
-      next = {
-        event_id: event.id,
-        start,
-        end,
-        base_event: event
-      };
-    }
-  }
-
-  return next;
-}
