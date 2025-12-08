@@ -1,4 +1,4 @@
-import { generateScheduleSuggestion, generateGroupScheduleSuggestion } from "../services/ollama.service.js";
+import { generateScheduleSuggestion, generateGroupScheduleSuggestion, parseEventFromText } from "../services/ollama.service.js";
 
 export async function getSuggestion(req, res) {
     try {
@@ -29,6 +29,26 @@ export async function getGroupSuggestion(req, res) {
         }
 
         const { data, error } = await generateGroupScheduleSuggestion(userIds, { description, duration });
+
+        if (error) {
+            return res.status(500).json({ error });
+        }
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export async function parseEvent(req, res) {
+    try {
+        const { userId, text } = req.body;
+
+        if (!userId || !text) {
+            return res.status(400).json({ error: "Missing userId or text" });
+        }
+
+        const { data, error } = await parseEventFromText(userId, text);
 
         if (error) {
             return res.status(500).json({ error });

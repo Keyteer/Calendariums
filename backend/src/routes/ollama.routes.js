@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { getSuggestion, getGroupSuggestion } from "../controllers/ollama.controller.js";
+import { getSuggestion, getGroupSuggestion, parseEvent } from "../controllers/ollama.controller.js";
 
 const router = Router();
 
 router.post("/suggest", getSuggestion);
 router.post("/group-suggest", getGroupSuggestion);
+
+router.post("/chat", parseEvent);
 
 export default router;

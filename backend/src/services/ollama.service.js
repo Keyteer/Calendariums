@@ -255,3 +255,133 @@ Do not include any markdown or explanation outside the JSON.
     return { data: null, error: error.message };
   }
 }
+
+/**
+ * Parses a natural language text into a structured event object.
+ * @param {string} userId - The user ID.
+ * @param {string} text - The natural language text (e.g., "Reunion mañana de 7 a 9").
+ */
+export async function parseEventFromText(userId, text) {
+  try {
+    // Force -03:00 timezone for the user context
+    const userNow = DateTime.now().setZone("UTC-3");
+    const humanDate = userNow.toFormat("cccc, dd LLL yyyy, HH:mm"); // e.g. Sunday, 07 Dec 2025, 23:20
+
+    console.log(`Parsing chat event. Input: "${text}", User Now: ${humanDate}`);
+
+    const prompt = `
+You are a smart scheduling assistant.
+Current Date/Time: ${humanDate}
+User Input: "${text}"
+
+Task: Extract event details.
+Rules:
+1. "Mañana" = Day after Current Date.
+2. "Hoy" = Current Date.
+3. "12pm" is NOON (12:00). "12am" is MIDNIGHT (00:00).
+4. Extract the DATE (YYYY-MM-DD) and TIME (HH:mm) separately.
+
+Fields required:
+- title: Short title.
+- date: YYYY-MM-DD (The date of the event).
+- start_time: HH:mm (24-hour format).
+- end_time: HH:mm (24-hour format). If not specified, add 1 hour to start_time.
+- location: "TBD" if not specified.
+- description: Empty string if not specified.
+
+Return ONLY a single JSON object. NO nesting.
+
+Your Response (JSON only):
+    `;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    let response;
+    try {
+      response = await fetch(`${OLLAMA_HOST}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          prompt: prompt,
+          stream: false,
+          format: "json"
+        }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) throw new Error(`Ollama API error: ${response.statusText}`);
+    const result = await response.json();
+
+    console.log("Ollama chat response:", result.response);
+
+    let parsedEvent;
+    try {
+      parsedEvent = JSON.parse(result.response);
+    } catch (e) {
+      console.log("Raw AI response for chat (failed parse):", result.response);
+      const cleanJson = result.response.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsedEvent = JSON.parse(cleanJson);
+    }
+
+    // Robust unwrapping
+    if (parsedEvent.output) parsedEvent = parsedEvent.output;
+    else if (parsedEvent.outputs && parsedEvent.outputs.event) parsedEvent = parsedEvent.outputs.event;
+    else if (parsedEvent.event) parsedEvent = parsedEvent.event;
+    else if (parsedEvent.response) parsedEvent = parsedEvent.response;
+    else if (parsedEvent.result) parsedEvent = parsedEvent.result;
+
+    // Validate extracted fields
+    if (!parsedEvent.date || !parsedEvent.start_time) {
+      throw new Error("AI failed to extract date or start_time");
+    }
+
+    // Sanitize date (take only YYYY-MM-DD)
+    const cleanDate = parsedEvent.date.substring(0, 10);
+
+    // Sanitize time (ensure HH:mm format)
+    const cleanStartTime = parsedEvent.start_time.substring(0, 5);
+    const cleanEndTime = parsedEvent.end_time ? parsedEvent.end_time.substring(0, 5) : null;
+
+    // Construct ISO strings in JS with correct offset
+    const startIso = DateTime.fromFormat(
+      `${cleanDate} ${cleanStartTime}`,
+      "yyyy-MM-dd HH:mm",
+      { zone: "UTC-3" }
+    ).toISO();
+
+    let endIso = null;
+    if (cleanEndTime) {
+      endIso = DateTime.fromFormat(
+        `${cleanDate} ${cleanEndTime}`,
+        "yyyy-MM-dd HH:mm",
+        { zone: "UTC-3" }
+      ).toISO();
+    } else {
+      // Default to 1 hour later
+      endIso = DateTime.fromISO(startIso).plus({ hours: 1 }).toISO();
+    }
+
+    if (!startIso) throw new Error(`Invalid date/time format: ${cleanDate} ${cleanStartTime}`);
+
+    // Return the final structure expected by the frontend
+    return {
+      data: {
+        title: parsedEvent.title,
+        start_datetime: startIso,
+        end_datetime: endIso,
+        location: parsedEvent.location || "TBD",
+        description: parsedEvent.description || ""
+      },
+      error: null
+    };
+
+  } catch (error) {
+    console.error("Error parsing event from text:", error);
+    return { data: null, error: error.message };
+  }
+}

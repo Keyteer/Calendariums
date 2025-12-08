@@ -13,3 +13,7 @@ export async function getScheduleSuggestion(userId: string, description: string,
 export async function getGroupScheduleSuggestion(userIds: string[], description: string, duration?: number) {
     return await apiPost("/ollama/group-suggest", { userIds, description, duration });
 }
+
+export async function parseEventFromText(userId: string, text: string) {
+    return await apiPost("/ollama/chat", { userId, text });
+}
