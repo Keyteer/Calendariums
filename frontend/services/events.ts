@@ -21,10 +21,10 @@ export interface EventType {
 }
 
 export function getEvents(userId: string, start?: string, end?: string) {
-  // Si no se proporcionan fechas, usar hoy + 30 días
+  // Si no se proporcionan fechas, usar hoy + 1 año
   const today = new Date();
   const future = new Date();
-  future.setDate(future.getDate() + 30);
+  future.setFullYear(future.getFullYear() + 1);
 
   const startDate = start || today.toISOString().split('T')[0];
   const endDate = end || future.toISOString().split('T')[0];

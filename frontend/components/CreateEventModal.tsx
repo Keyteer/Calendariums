@@ -9,8 +9,10 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Switch,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { useApp } from '../context/AppContext'
 import { createEvent, getEventTypes, EventType } from '../services/events'
 
@@ -38,6 +40,16 @@ export default function CreateEventModal({
   const [endTime, setEndTime] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Recurrence state
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [frequency, setFrequency] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('WEEKLY')
+  const [selectedDays, setSelectedDays] = useState<string[]>([])
+  const [endType, setEndType] = useState<'never' | 'until' | 'count'>('never')
+  const [endDate, setEndDate] = useState('')
+  const [count, setCount] = useState('10')
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [endDateObj, setEndDateObj] = useState(new Date())
+
   // Cargar tipos de eventos
   useEffect(() => {
     loadEventTypes()
@@ -64,6 +76,54 @@ export default function CreateEventModal({
     }
   }
 
+  // Helper functions for recurrence
+  function translateFreq(freq: string) {
+    const map: Record<string, string> = { DAILY: 'Diaria', WEEKLY: 'Semanal', MONTHLY: 'Mensual', YEARLY: 'Anual' }
+    return map[freq] || freq
+  }
+
+  function translateEndType(type: string) {
+    const map: Record<string, string> = { never: 'Nunca', until: 'Hasta fecha', count: 'Después de' }
+    return map[type] || type
+  }
+
+  function toggleDay(day: string) {
+    setSelectedDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
+  }
+
+  function handleDatePickerChange(event: any, selectedDate?: Date) {
+    setShowDatePicker(Platform.OS === 'ios')
+
+    if (selectedDate) {
+      setEndDateObj(selectedDate)
+      // Formatear la fecha como YYYY-MM-DD
+      const year = selectedDate.getFullYear()
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const day = String(selectedDate.getDate()).padStart(2, '0')
+      setEndDate(`${year}-${month}-${day}`)
+    }
+  }
+
+  function buildRRule(): string | null {
+    if (!isRecurring) return null
+
+    let rrule = `FREQ=${frequency}`
+
+    if (frequency === 'WEEKLY' && selectedDays.length > 0) {
+      rrule += `;BYDAY=${selectedDays.join(',')}`
+    }
+
+    if (endType === 'until' && endDate) {
+      rrule += `;UNTIL=${endDate.replace(/-/g, '')}`
+    } else if (endType === 'count' && count) {
+      rrule += `;COUNT=${count}`
+    }
+
+    return rrule
+  }
+
   function resetForm() {
     setTitle('')
     setDescription('')
@@ -71,6 +131,14 @@ export default function CreateEventModal({
     setDate(selectedDate)
     setStartTime('')
     setEndTime('')
+    setIsRecurring(false)
+    setFrequency('WEEKLY')
+    setSelectedDays([])
+    setEndType('never')
+    setEndDate('')
+    setCount('0')
+    setShowDatePicker(false)
+    setEndDateObj(new Date())
     if (eventTypes.length > 0) {
       setSelectedType(eventTypes[0])
     }
@@ -108,6 +176,18 @@ export default function CreateEventModal({
     const start_datetime = startDate.toISOString()
     const end_datetime = endDate.toISOString()
 
+    // Validación adicional para recurrencia
+    if (isRecurring && frequency === 'WEEKLY' && selectedDays.length === 0) {
+      Alert.alert('Error', 'Selecciona al menos un día de la semana')
+      return
+    }
+
+    // Construir RRULE si hay recurrencia
+    const rruleString = buildRRule()
+    const recurrence_rule = rruleString
+      ? { rrule: rruleString, timezone: 'America/Santiago' }
+      : undefined
+
     try {
       setLoading(true)
 
@@ -119,6 +199,7 @@ export default function CreateEventModal({
         creator_id: session!.user.id,
         start_datetime,
         end_datetime,
+        recurrence_rule,
       }
 
       const response = await createEvent(eventData)
@@ -266,6 +347,125 @@ export default function CreateEventModal({
                 textAlignVertical="top"
               />
             </View>
+
+            {/* Recurrencia */}
+            <View style={styles.formGroup}>
+              <View style={styles.recurringToggleContainer}>
+                <Text style={styles.label}>¿Se repite?</Text>
+                <Switch
+                  value={isRecurring}
+                  onValueChange={setIsRecurring}
+                  trackColor={{ false: '#D1D5DB', true: '#606C38' }}
+                  thumbColor={isRecurring ? '#BC6C25' : '#f4f3f4'}
+                />
+              </View>
+            </View>
+
+            {/* Sección de recurrencia expandible */}
+            {isRecurring && (
+              <View style={styles.recurrenceSection}>
+                {/* Frecuencia */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Frecuencia</Text>
+                  <View style={styles.frequencyButtons}>
+                    {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(freq => (
+                      <TouchableOpacity
+                        key={freq}
+                        style={[styles.freqButton, frequency === freq && styles.freqButtonActive]}
+                        onPress={() => setFrequency(freq)}
+                      >
+                        <Text style={[styles.freqButtonText, frequency === freq && styles.freqButtonTextActive]}>
+                          {translateFreq(freq)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Selector de días (solo WEEKLY) */}
+                {frequency === 'WEEKLY' && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Días</Text>
+                    <View style={styles.daysContainer}>
+                      {[
+                        {label: 'L', value: 'MO'},
+                        {label: 'M', value: 'TU'},
+                        {label: 'Mi', value: 'WE'},
+                        {label: 'J', value: 'TH'},
+                        {label: 'V', value: 'FR'},
+                        {label: 'S', value: 'SA'},
+                        {label: 'D', value: 'SU'}
+                      ].map(day => (
+                        <TouchableOpacity
+                          key={day.value}
+                          style={[styles.dayButton, selectedDays.includes(day.value) && styles.dayButtonActive]}
+                          onPress={() => toggleDay(day.value)}
+                        >
+                          <Text style={[styles.dayButtonText, selectedDays.includes(day.value) && styles.dayButtonTextActive]}>
+                            {day.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Termina */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Termina</Text>
+                  <View style={styles.endTypeContainer}>
+                    {(['never', 'until', 'count'] as const).map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.endTypeButton, endType === type && styles.endTypeButtonActive]}
+                        onPress={() => setEndType(type)}
+                      >
+                        <Text style={[styles.endTypeButtonText, endType === type && styles.endTypeButtonTextActive]}>
+                          {translateEndType(type)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {endType === 'until' && (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.datePickerButton, { marginTop: 12 }]}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Feather name="calendar" size={18} color="#606C38" />
+                        <Text style={styles.datePickerButtonText}>
+                          {endDate || 'Seleccionar fecha'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {showDatePicker && (
+                        <DateTimePicker
+                          value={endDateObj}
+                          mode="date"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          onChange={handleDatePickerChange}
+                          minimumDate={new Date()}
+                          accentColor="#606C38"
+                          themeVariant="light"
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {endType === 'count' && (
+                    <TextInput
+                      style={[styles.input, { marginTop: 12 }]}
+                      value={count}
+                      onChangeText={setCount}
+                      placeholder="Días"
+                      keyboardType="numeric"
+                      placeholderTextColor="#999"
+                    />
+                  )}
+                </View>
+              </View>
+            )}
           </ScrollView>
 
           {/* Footer */}
@@ -442,5 +642,134 @@ const styles = StyleSheet.create({
 
   buttonDisabled: {
     backgroundColor: '#D1D5DB',
+  },
+
+  // Recurrence styles
+  recurringToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  recurrenceSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+
+  frequencyButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  freqButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+
+  freqButtonActive: {
+    borderColor: '#606C38',
+    backgroundColor: '#606C3820',
+  },
+
+  freqButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  freqButtonTextActive: {
+    color: '#606C38',
+    fontWeight: 'bold',
+  },
+
+  daysContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  dayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  dayButtonActive: {
+    borderColor: '#606C38',
+    backgroundColor: '#606C38',
+  },
+
+  dayButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+
+  dayButtonTextActive: {
+    color: '#FFFFFF',
+  },
+
+  endTypeContainer: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+
+  endTypeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+  },
+
+  endTypeButtonActive: {
+    borderColor: '#606C38',
+    backgroundColor: '#606C3820',
+  },
+
+  endTypeButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  endTypeButtonTextActive: {
+    color: '#606C38',
+    fontWeight: 'bold',
+  },
+
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#606C38',
+    backgroundColor: '#FFFFFF',
+  },
+
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#606C38',
+    fontWeight: '500',
   },
 })

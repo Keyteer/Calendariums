@@ -6,6 +6,8 @@ import { getEvents } from '../services/events'
 // Tipos
 export interface Event {
   id: string
+  event_id?: string  // ID del evento base (para instancias recurrentes)
+  is_recurring_instance?: boolean  // Si es una instancia expandida
   title: string
   description?: string
   location?: string

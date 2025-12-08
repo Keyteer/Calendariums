@@ -21,10 +21,16 @@ export default function MainPage() {
     })
   }
 
-  const handleDeleteEvent = (eventId: string, eventTitle: string) => {
+  const handleDeleteEvent = (event: Event) => {
+    // Si es una instancia recurrente, usar el event_id del evento base
+    const eventIdToDelete = event.is_recurring_instance && event.event_id ? event.event_id : event.id
+    const warningMessage = event.is_recurring_instance
+      ? `¿Estás seguro de que deseas eliminar "${event.title}"? Esto eliminará todas las repeticiones del evento.`
+      : `¿Estás seguro de que deseas eliminar "${event.title}"?`
+
     Alert.alert(
       'Eliminar evento',
-      `¿Estás seguro de que deseas eliminar "${eventTitle}"?`,
+      warningMessage,
       [
         {
           text: 'Cancelar',
@@ -34,7 +40,7 @@ export default function MainPage() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            const result = await deleteEvent(eventId)
+            const result = await deleteEvent(eventIdToDelete)
             if (result.error) {
               Alert.alert('Error', 'No se pudo eliminar el evento')
             } else {
@@ -168,7 +174,7 @@ export default function MainPage() {
                     </View>
 
                     <TouchableOpacity
-                      onPress={() => handleDeleteEvent(event.id, event.title)}
+                      onPress={() => handleDeleteEvent(event)}
                       style={styles.deleteButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -178,6 +184,13 @@ export default function MainPage() {
 
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventTitle}>{event.title}</Text>
+
+                    {event.recurrence_rules && event.recurrence_rules.length > 0 && (
+                      <View style={styles.recurringBadge}>
+                        <Feather name="repeat" size={12} color="#606C38" />
+                        <Text style={styles.recurringText}>Recurrente</Text>
+                      </View>
+                    )}
 
                     {event.event_types && (
                       <View style={styles.eventTypeContainer}>
@@ -366,6 +379,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#283618',
     marginBottom: 4,
+  },
+
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+
+  recurringText: {
+    fontSize: 11,
+    color: '#606C38',
+    fontStyle: 'italic',
   },
 
   eventTypeContainer: {
