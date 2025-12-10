@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: 
@@ -13,69 +11,13 @@ services:
       - PORT=6969
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/calendarium
-      - OLLAMA_HOST=http://ollama:11434
     volumes:
       - ./backend:/app
       - /app/node_modules
-    depends_on:
-      - db
-      - ollama
     restart: unless-stopped
     command: npm run dev
     networks:
       - calendarium-network
-
-  db:
-    image: postgres:15-alpine
-    container_name: calendarium-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: calendarium
-      POSTGRES_INITDB_ARGS: "-E UTF8"
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - calendarium-network
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: calendarium-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - calendarium-network
-
-  adminer:
-    image: adminer:latest
-    container_name: calendarium-adminer
-    ports:
-      - "8080:8080"
-    environment:
-      ADMINER_DEFAULT_SERVER: db
-    depends_on:
-      - db
-    restart: unless-stopped
-    networks:
-      - calendarium-network
-
-volumes:
-  postgres_data:
-    driver: local
-  ollama_data:
-    driver: local
 
 networks:
   calendarium-network:

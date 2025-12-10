@@ -3,6 +3,7 @@ import express from "express";
 import eventsRoutes from "./routes/events.routes.js";
 import eventTypesRoutes from "./routes/event-types.routes.js";
 import ollamaRoutes from "./routes/ollama.routes.js";
+import groupsRoutes from "./routes/groups.routes.js";
 
 const app = express()
 app.use(express.json());
@@ -16,5 +17,6 @@ app.get('/', (req, res) => {
 app.use("/events", eventsRoutes);
 app.use("/event-types", eventTypesRoutes);
 app.use("/ollama", ollamaRoutes);
+app.use("/groups", groupsRoutes);
 
 export default app;
