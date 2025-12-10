@@ -76,8 +76,9 @@ export default function ChatAI() {
     }
     setIsLoading(true);
     try {
-      // Find a default event type if not specified (or just pick the first one)
+      // Use AI-detected type or fallback to default
       const defaultType = eventTypes.length > 0 ? eventTypes[0].name : 'General';
+      const typeToUse = eventData.event_type_id || defaultType;
 
       const newEvent = {
         title: eventData.title,
@@ -85,7 +86,7 @@ export default function ChatAI() {
         start_datetime: eventData.start_datetime,
         end_datetime: eventData.end_datetime,
         location: eventData.location || "TBD",
-        event_type_id: defaultType, // We need to handle this better in the future
+        event_type_id: typeToUse,
         creator_id: user.id
       };
 
@@ -113,6 +114,7 @@ export default function ChatAI() {
         {item.type === 'event-proposal' && item.eventData && (
           <View style={styles.proposalCard}>
             <Text style={styles.proposalTitle}>{item.eventData.title}</Text>
+            <Text style={styles.proposalDetail}>🏷️ {item.eventData.event_type_id || 'Evento'}</Text>
             <Text style={styles.proposalDetail}>📅 {DateTime.fromISO(item.eventData.start_datetime).toFormat("cccc dd LLL")}</Text>
             <Text style={styles.proposalDetail}>⏰ {DateTime.fromISO(item.eventData.start_datetime).toFormat("HH:mm")} - {DateTime.fromISO(item.eventData.end_datetime).toFormat("HH:mm")}</Text>
             {item.eventData.location && <Text style={styles.proposalDetail}>📍 {item.eventData.location}</Text>}
