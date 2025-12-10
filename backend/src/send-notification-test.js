@@ -1,7 +1,7 @@
 // Simple script to send a push notification
 // Run with: node send-notification.js
 
-const EXPO_PUSH_TOKEN = 'ExponentPushToken[Hm4D8zDe0Y7g7AUGcljG5h]'; // <-- Paste your token here
+const EXPO_PUSH_TOKEN = 'ExponentPushToken[l0WihZPMciuhzKz4zW2Lmm]'; // <-- Paste your token here
 
 async function sendNotification() {
   const message = {

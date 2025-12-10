@@ -1,6 +1,3 @@
-// Uncomment this line to test notifications:
-export { default } from './components/PushNotificationTest';
-
 import { useState, useEffect } from 'react'
 import { supabase } from './services/supabase'
 import Auth from './components/Auth'
@@ -57,7 +54,7 @@ function AppContent() {
   )
 }
 
-export function App() {
+export default function App() {
   return (
     <AppProvider>
       <AppContent />

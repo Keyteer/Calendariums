@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "notification-test": "node src/send-notification-test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
