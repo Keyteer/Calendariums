@@ -1,6 +1,6 @@
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: calendarium-backend
@@ -11,6 +11,7 @@ services:
       - PORT=6969
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - OLLAMA_HOST=http://ollama:11434
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -18,7 +19,23 @@ services:
     command: npm run dev
     networks:
       - calendarium-network
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: calendarium-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - calendarium-network
 
 networks:
   calendarium-network:
     driver: bridge
+
+volumes:
+  ollama-data:
