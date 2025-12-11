@@ -280,6 +280,10 @@ Response Format (JSON):
     const simpleDateRegex = /(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|el|dia)\s+(\d{1,2})\b/i;
     const simpleDateMatch = lowerText.match(simpleDateRegex);
 
+    // 0.6 Verificar fechas relativas avanzadas "en X dias/semanas"
+    const relativeRegex = /en\s+(\d+)\s+(dias|días|semanas?|meses|mes|años?|anos?)/i;
+    const relativeMatch = lowerText.match(relativeRegex);
+
     if (dateMatch) {
       const day = parseInt(dateMatch[1]);
       const monthName = dateMatch[2].toLowerCase();
@@ -293,6 +297,20 @@ Response Format (JSON):
       cleanDate = putativeDate.toISODate();
       console.log(`Specific date parsed: ${cleanDate} (${day} de ${monthName})`);
     }
+    // Lógica para fechas relativas "en X ..."
+    else if (relativeMatch) {
+      const val = parseInt(relativeMatch[1]);
+      const unit = relativeMatch[2].toLowerCase();
+      let addConfig = {};
+      if (unit.includes("dia") || unit.includes("día")) addConfig = { days: val };
+      else if (unit.includes("semana")) addConfig = { weeks: val };
+      else if (unit.includes("mes")) addConfig = { months: val };
+      else if (unit.includes("año") || unit.includes("ano")) addConfig = { years: val };
+
+      cleanDate = userNow.plus(addConfig).toISODate();
+      console.log(`Relative date parsed: ${cleanDate} (in ${val} ${unit})`);
+    }
+    // Lógica para fecha implícita (ej. "Sábado 20")
     // Lógica para fecha implícita (ej. "Sábado 20")
     else if (simpleDateMatch) {
       const day = parseInt(simpleDateMatch[1]);
@@ -406,9 +424,46 @@ Response Format (JSON):
     };
 
     if (rangeMatch) {
-      const [_, h1, m1, h2, m2] = rangeMatch;
-      cleanStartTime = to24h(h1, m1, isPm);
-      cleanEndTime = to24h(h2, m2, isPm);
+      let [_, h1, m1, h2, m2] = rangeMatch;
+
+      // Smart AM/PM Logic (e.g. "10 a 2 de la tarde")
+      const modifierMatch = lowerText.match(/(?:de la|por la)\s*(tarde|noche|mañana|manana)/i);
+      let smartPm = isPm;
+
+      if (modifierMatch) {
+        const modStr = modifierMatch[1].toLowerCase();
+        const isModPm = modStr.includes("tarde") || modStr.includes("noche");
+        const isModAm = modStr.includes("mañana") || modStr.includes("manana");
+
+        let h1Int = parseInt(h1);
+        let h2Int = parseInt(h2);
+
+        // Si el rango es invertido numéricamente (ej. 10 a 2), asume cruce de mediodía o medianoche
+        if (h1Int > h2Int) {
+          // Caso: "10 a 2 de la tarde" -> End es tarde (14), Start es AM (10)
+          if (isModPm) {
+            // End es PM, Start es AM
+            h2 = (h2Int < 12 ? h2Int + 12 : h2Int).toString(); // End PM
+            // Start se mantiene AM (no se suma 12 a 10)
+            smartPm = false; // Ya manejamos la conversión manual para End
+          }
+          // Caso: "10 a 1 de la mañana" -> End es AM (1), Start es PM (22)
+          else if (isModAm) {
+            // End es AM (se mantiene 1)
+            // Start es PM anterior
+            h1 = (h1Int < 12 ? h1Int + 12 : h1Int).toString();
+            smartPm = false;
+          }
+        } else {
+          // Caso normal: "1 a 5 de la tarde" -> Ambos PM
+          if (isModPm) smartPm = true;
+          // "10 a 11 de la mañana" -> Ambos AM
+          if (isModAm) smartPm = false;
+        }
+      }
+
+      cleanStartTime = to24h(h1, m1, smartPm);
+      cleanEndTime = to24h(h2, m2, smartPm);
       timeFound = true;
       console.log(`Time Extracted (Range): ${cleanStartTime} - ${cleanEndTime}`);
     } else if (singleMatch) {
@@ -455,6 +510,11 @@ Response Format (JSON):
     let endObj = null;
     if (cleanEndTime) {
       endObj = DateTime.fromFormat(`${cleanDate} ${cleanEndTime}`, "yyyy-MM-dd HH:mm", { zone: "UTC-3" });
+      // Si la hora de fin es menor que la de inicio (ej. 22:00 a 01:00), asumimos que es al día siguiente
+      if (endObj < startObj) {
+        endObj = endObj.plus({ days: 1 });
+      }
+      // Asegurar duración mínima si sigue siendo <= (caso igual hora)
       if (endObj <= startObj) endObj = startObj.plus({ hours: 1 });
     } else {
       endObj = startObj.plus({ hours: 1 });
