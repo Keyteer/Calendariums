@@ -55,10 +55,8 @@ export default function GroupInviteModal({
       const code = response.invite.invite_code
       setInviteCode(code)
 
-      // HACK: Para desarrollo local, forzar la IP de tu PC
-      // Linking.createURL en web nos da 'http://localhost...', que el celular no puede abrir.
-      // Construimos manual el link de Expo Go:
-      const link = `exp://192.168.1.91:8081/--/group/invite/${code}`
+      // Usar deep link scheme configurado en app.json
+      const link = `calendariums://group/invite/${code}`
 
       console.log('QR Code Link:', link)
       setInviteLink(link)

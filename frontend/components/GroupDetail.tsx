@@ -5,6 +5,9 @@ import { useApp, Group } from '../context/AppContext'
 import GroupInviteModal from './GroupInviteModal'
 import GroupCalendarView from './GroupCalendarView'
 import GroupSettingsModal from './GroupSettingsModal'
+import CreateGroupEventModal from './CreateGroupEventModal'
+import PendingGroupInvitations from './PendingGroupInvitations'
+import { deleteGroup } from '../services/groups'
 
 interface GroupDetailProps {
   group: Group
@@ -12,10 +15,12 @@ interface GroupDetailProps {
 }
 
 export default function GroupDetail({ group, onBack }: GroupDetailProps) {
-  const { user } = useApp()
+  const { user, refreshGroups } = useApp()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false)
+  const [showPendingModal, setShowPendingModal] = useState(false)
 
   const isAdmin = group.user_role === 'admin'
   const isModerator = group.user_role === 'moderator' || isAdmin
@@ -132,7 +137,7 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
           {/* Crear evento de grupo */}
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => Alert.alert('Próximamente', 'Crear evento de grupo')}
+            onPress={() => setShowCreateEventModal(true)}
           >
             <View style={styles.actionIcon}>
               <Feather name="plus-circle" size={22} color="#606C38" />
@@ -170,7 +175,7 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
             <Text style={styles.sectionTitle}>Invitaciones Pendientes</Text>
             <TouchableOpacity
               style={[styles.actionCard, styles.pendingCard]}
-              onPress={() => Alert.alert('Próximamente', 'Ver invitaciones pendientes')}
+              onPress={() => setShowPendingModal(true)}
             >
               <View style={styles.pendingBadge}>
                 <Text style={styles.pendingCount}>{group.pending_invitations_count}</Text>
@@ -201,7 +206,17 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
                     {
                       text: 'Eliminar',
                       style: 'destructive',
-                      onPress: () => Alert.alert('Próximamente', 'Funcionalidad de eliminación')
+                      onPress: async () => {
+                        try {
+                          await deleteGroup(group.id)
+                          Alert.alert('Grupo Eliminado', 'El grupo ha sido eliminado exitosamente')
+                          await refreshGroups()
+                          onBack()
+                        } catch (error) {
+                          console.error('Error deleting group:', error)
+                          Alert.alert('Error', 'No se pudo eliminar el grupo')
+                        }
+                      }
                     }
                   ]
                 )
@@ -238,6 +253,29 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
           visible={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           group={group}
+        />
+      )}
+
+      {/* Modal de crear evento de grupo */}
+      {showCreateEventModal && (
+        <CreateGroupEventModal
+          visible={showCreateEventModal}
+          onClose={() => setShowCreateEventModal(false)}
+          group={group}
+          userId={user.id}
+          onEventCreated={() => {
+            refreshGroups()
+          }}
+        />
+      )}
+
+      {/* Modal de invitaciones pendientes */}
+      {showPendingModal && (
+        <PendingGroupInvitations
+          visible={showPendingModal}
+          onClose={() => setShowPendingModal(false)}
+          groupId={group.id}
+          userId={user.id}
         />
       )}
     </View>
