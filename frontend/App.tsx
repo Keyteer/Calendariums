@@ -3,7 +3,7 @@ import { supabase } from './services/supabase'
 import Auth from './components/Auth'
 import LoginPage from './components/LoginPage'
 import SimpleNavigator from './components/SimpleNavigator'
-import { View } from 'react-native'
+import { View, Text } from 'react-native'
 import { AppProvider, useApp } from './context/AppContext'
 import { useDeepLinking } from './hooks/useDeepLinking'
 
@@ -35,7 +35,13 @@ function AppContent() {
   }, [])
 
   // Si no se hace esto se muere el LoginPage rip
-  if (loading) return null
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Cargando App...</Text>
+      </View>
+    )
+  }
 
   // If user is logged in, show simple navigator with tabs
   if (session?.user) {

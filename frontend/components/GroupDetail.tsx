@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert } from 'rea
 import { Feather } from '@expo/vector-icons'
 import { useApp, Group } from '../context/AppContext'
 import GroupInviteModal from './GroupInviteModal'
+import GroupCalendarView from './GroupCalendarView'
 import GroupSettingsModal from './GroupSettingsModal'
 
 interface GroupDetailProps {
@@ -14,11 +15,21 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
   const { user } = useApp()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
 
   const isAdmin = group.user_role === 'admin'
   const isModerator = group.user_role === 'moderator' || isAdmin
 
   if (!user) return null
+
+  if (showCalendar) {
+    return (
+      <GroupCalendarView
+        group={group}
+        onBack={() => setShowCalendar(false)}
+      />
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -72,7 +83,7 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
               <Feather name="shield" size={18} color="#606C38" />
               <Text style={styles.infoText}>
                 Tu rol: {group.user_role === 'admin' ? 'Administrador' :
-                         group.user_role === 'moderator' ? 'Moderador' : 'Miembro'}
+                  group.user_role === 'moderator' ? 'Moderador' : 'Miembro'}
               </Text>
             </View>
           </View>
@@ -104,7 +115,7 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
           {/* Ver calendario del grupo */}
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => Alert.alert('Próximamente', 'Calendario del grupo')}
+            onPress={() => setShowCalendar(true)}
           >
             <View style={styles.actionIcon}>
               <Feather name="calendar" size={22} color="#606C38" />
@@ -154,7 +165,7 @@ export default function GroupDetail({ group, onBack }: GroupDetailProps) {
         </View>
 
         {/* Invitaciones pendientes */}
-        {group.pending_invitations_count && group.pending_invitations_count > 0 && (
+        {(group.pending_invitations_count || 0) > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Invitaciones Pendientes</Text>
             <TouchableOpacity

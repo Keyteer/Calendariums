@@ -57,7 +57,7 @@ export async function addMemberToGroup(data: AddMemberData) {
 }
 
 export async function removeMemberFromGroup(data: RemoveMemberData) {
-  return apiDelete('/groups/members', data)
+  return apiDelete(`/groups/${data.groupId}/members/${data.userId}`)
 }
 
 export async function updateMemberRole(data: UpdateRoleData) {

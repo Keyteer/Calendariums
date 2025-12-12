@@ -43,6 +43,8 @@ export default function GroupSettingsModal({
       const response = await getGroupMembers(group.id)
       if (!response.error) {
         setMembers(response.members || [])
+      } else {
+        console.error('Error in response:', response.error)
       }
     } catch (error) {
       console.error('Error loading members:', error)
@@ -65,7 +67,7 @@ export default function GroupSettingsModal({
             style: 'destructive',
             onPress: async () => {
               try {
-                await removeMemberFromGroup(group.id, member.user_id)
+                await removeMemberFromGroup({ groupId: group.id, userId: member.user_id })
                 Alert.alert('Éxito', 'Miembro removido del grupo')
                 await loadMembers()
                 await refreshGroups()
@@ -96,7 +98,7 @@ export default function GroupSettingsModal({
           text: 'Cambiar',
           onPress: async () => {
             try {
-              await updateMemberRole(group.id, member.user_id, newRole)
+              await updateMemberRole({ groupId: group.id, userId: member.user_id, newRole })
               Alert.alert('Éxito', 'Rol actualizado')
               await loadMembers()
               await refreshGroups()
@@ -169,7 +171,7 @@ export default function GroupSettingsModal({
 
                     <View style={styles.memberContent}>
                       <Text style={styles.memberName}>
-                        {member.user?.full_name || member.user?.username}
+                        {member.user?.full_name || member.user?.username || `Usuario ${member.user_id.slice(0, 4)}...`}
                         {member.user_id === user?.id && ' (Tú)'}
                       </Text>
                       <Text style={[styles.memberRole, { color: getRoleColor(member.role) }]}>
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
   },
 
   scrollView: {
-    flex: 1,
+    width: '100%',
   },
 
   section: {

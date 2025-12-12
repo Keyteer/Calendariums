@@ -41,9 +41,11 @@ export async function createEvent(eventData) {
     start_datetime,
     end_datetime,
     location,
-    recurrence_rules
+
+    recurrence_rules,
+    group_id
   } = eventData;
-  
+
   // Insertar el evento principal
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -55,7 +57,8 @@ export async function createEvent(eventData) {
       start_datetime,
       end_datetime,
       location,
-      created_by_ai: false
+      created_by_ai: false,
+      group_id: group_id || null
     })
     .select()
     .single();

@@ -14,6 +14,7 @@ import { Group } from '../context/AppContext'
 
 interface GroupCalendarViewProps {
   group: Group
+  onBack: () => void
 }
 
 interface Activity {
@@ -46,7 +47,7 @@ const MEMBER_COLORS = [
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6) // 6 AM - 10 PM
 const SCREEN_WIDTH = Dimensions.get('window').width
 
-export default function GroupCalendarView({ group }: GroupCalendarViewProps) {
+export default function GroupCalendarView({ group, onBack }: GroupCalendarViewProps) {
   const [loading, setLoading] = useState(false)
   const [memberActivities, setMemberActivities] = useState<MemberActivities[]>([])
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getWeekStart(new Date()))
@@ -63,7 +64,7 @@ export default function GroupCalendarView({ group }: GroupCalendarViewProps) {
 
   useEffect(() => {
     if (weekDays.length > 0) {
-      loadActivities()
+      loadActivities() // eslint-disable-line
     }
   }, [weekDays])
 
@@ -207,8 +208,8 @@ export default function GroupCalendarView({ group }: GroupCalendarViewProps) {
     <View style={styles.container}>
       {/* Header de navegación */}
       <View style={styles.navigationHeader}>
-        <TouchableOpacity onPress={goToPreviousWeek} style={styles.navButton}>
-          <Feather name="chevron-left" size={24} color="#606C38" />
+        <TouchableOpacity onPress={onBack} style={styles.navButton}>
+          <Feather name="arrow-left" size={24} color="#283618" />
         </TouchableOpacity>
 
         <View style={styles.weekInfo}>
@@ -218,9 +219,14 @@ export default function GroupCalendarView({ group }: GroupCalendarViewProps) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={goToNextWeek} style={styles.navButton}>
-          <Feather name="chevron-right" size={24} color="#606C38" />
-        </TouchableOpacity>
+        <View style={styles.navControls}>
+          <TouchableOpacity onPress={goToPreviousWeek} style={styles.navButton}>
+            <Feather name="chevron-left" size={24} color="#606C38" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={goToNextWeek} style={styles.navButton}>
+            <Feather name="chevron-right" size={24} color="#606C38" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Leyenda de miembros */}
@@ -301,6 +307,10 @@ const styles = StyleSheet.create({
 
   navButton: {
     padding: 8,
+  },
+
+  navControls: {
+    flexDirection: 'row',
   },
 
   weekInfo: {

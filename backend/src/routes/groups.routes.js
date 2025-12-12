@@ -11,7 +11,8 @@ import {
   deleteGroup,
   generateGroupInvite,
   getGroupByInviteCode,
-  joinGroupByInviteCode
+  joinGroupByInviteCode,
+  getGroupMembers
 } from "../controllers/groups.controller.js";
 
 const router = Router();
@@ -29,7 +30,10 @@ router.patch("/:groupId", updateGroupInfo);
 router.post("/members", addUserToGroup);
 
 // DELETE /groups/members
-router.delete("/members", removeUserFromGroup);
+router.delete("/:groupId/members/:userId", removeUserFromGroup);
+
+// GET /groups/members/:groupId
+router.get("/members/:groupId", getGroupMembers);
 
 // PATCH /groups/members
 router.patch("/members", updateGroupMemberRole);

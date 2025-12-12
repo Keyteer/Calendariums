@@ -35,16 +35,20 @@ export default function QRScannerModal({ visible, onClose }: QRScannerModalProps
 
     setScanned(true)
 
-    // Parsear el deep link: calendariums://group/invite/{code}
-    const inviteCodeMatch = data.match(/calendariums:\/\/group\/invite\/([A-Z0-9]+)/)
+    console.log('Scanned data:', data)
+
+    // Regex para soportar ambos formatos:
+    // 1. calendariums://group/invite/CODE
+    // 2. exp://IP:PORT/--/group/invite/CODE
+    const inviteCodeMatch = data.match(/(?:group\/invite\/)([A-Z0-9]+)/i)
 
     if (!inviteCodeMatch) {
-      Alert.alert('Código inválido', 'El código QR escaneado no es válido')
+      Alert.alert('Código inválido', 'El código QR no contiene una invitación válida')
       setScanned(false)
       return
     }
 
-    const inviteCode = inviteCodeMatch[1]
+    const inviteCode = inviteCodeMatch[1].toUpperCase()
 
     try {
       setLoading(true)
@@ -60,9 +64,10 @@ export default function QRScannerModal({ visible, onClose }: QRScannerModalProps
       }
 
       // Mostrar confirmación
+      const groupName = groupInfo.invite?.groups?.name || 'Grupo'
       Alert.alert(
         'Unirse al Grupo',
-        `¿Deseas unirte al grupo "${groupInfo.group.name}"?`,
+        `¿Deseas unirte al grupo "${groupName}"?`,
         [
           {
             text: 'Cancelar',
@@ -87,7 +92,7 @@ export default function QRScannerModal({ visible, onClose }: QRScannerModalProps
               if (result.error) {
                 Alert.alert('Error', result.error)
               } else {
-                Alert.alert('¡Éxito!', `Te has unido al grupo "${groupInfo.group.name}"`)
+                Alert.alert('¡Éxito!', `Te has unido al grupo "${groupName}"`)
                 await refreshGroups()
                 onClose()
               }
@@ -178,7 +183,10 @@ export default function QRScannerModal({ visible, onClose }: QRScannerModalProps
             barcodeTypes: ['qr'],
           }}
         >
-          {/* Overlay */}
+        </CameraView>
+
+        {/* Overlay (moved outside CameraView) */}
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
           <View style={styles.cameraOverlay}>
             <View style={styles.scanArea}>
               <View style={[styles.corner, styles.cornerTopLeft]} />
@@ -194,7 +202,7 @@ export default function QRScannerModal({ visible, onClose }: QRScannerModalProps
               <Text style={styles.loadingText}>Procesando...</Text>
             </View>
           )}
-        </CameraView>
+        </View>
 
         {/* Instructions */}
         <View style={styles.instructions}>

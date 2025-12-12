@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons'
 import QRCode from 'react-native-qrcode-svg'
 import * as Clipboard from 'expo-clipboard'
 import { generateGroupInvite } from '../services/groups'
+import * as Linking from 'expo-linking'
 
 interface GroupInviteModalProps {
   visible: boolean
@@ -54,8 +55,12 @@ export default function GroupInviteModal({
       const code = response.invite.invite_code
       setInviteCode(code)
 
-      // Crear deep link (ajustar según tu configuración)
-      const link = `calendariums://group/invite/${code}`
+      // HACK: Para desarrollo local, forzar la IP de tu PC
+      // Linking.createURL en web nos da 'http://localhost...', que el celular no puede abrir.
+      // Construimos manual el link de Expo Go:
+      const link = `exp://192.168.1.91:8081/--/group/invite/${code}`
+
+      console.log('QR Code Link:', link)
       setInviteLink(link)
     } catch (error) {
       console.error('Error generating invite:', error)

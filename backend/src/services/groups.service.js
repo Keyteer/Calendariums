@@ -116,7 +116,14 @@ export async function addMemberToGroup(groupId, userId, role = "member") {
 export async function getGroupMembers(groupId) {
   return await supabase
     .from("group_members")
-    .select()
+    .select(`
+      *,
+      user:users (
+        id,
+        username,
+        full_name
+      )
+    `)
     .eq("group_id", groupId);
 }
 
@@ -137,7 +144,7 @@ export async function updateMemberRole(groupId, userId, newRole) {
  * Elimina un miembro de un grupo
  */
 export async function removeMemberFromGroup(groupId, userId) {
-  const { data, error} = await supabase
+  const { data, error } = await supabase
     .from("group_members")
     .delete()
     .eq("group_id", groupId)

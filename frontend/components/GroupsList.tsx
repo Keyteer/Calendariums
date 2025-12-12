@@ -4,11 +4,13 @@ import { Feather } from '@expo/vector-icons'
 import { useApp } from '../context/AppContext'
 import CreateGroupModal from './CreateGroupModal'
 import QRScannerModal from './QRScannerModal'
+import JoinGroupModal from './JoinGroupModal'
 
 export default function GroupsList() {
   const { user, groups, groupsLoading, refreshGroups, setSelectedGroup } = useApp()
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [scannerModalVisible, setScannerModalVisible] = useState(false)
+  const [joinModalVisible, setJoinModalVisible] = useState(false)
 
   useEffect(() => {
     // Refresh groups cuando se monta el componente
@@ -26,12 +28,20 @@ export default function GroupsList() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Mis Grupos</Text>
-          <TouchableOpacity
-            onPress={() => setScannerModalVisible(true)}
-            style={styles.scanButton}
-          >
-            <Feather name="camera" size={24} color="#606C38" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              onPress={() => setJoinModalVisible(true)}
+              style={styles.iconButton}
+            >
+              <Feather name="hash" size={24} color="#606C38" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setScannerModalVisible(true)}
+              style={styles.iconButton}
+            >
+              <Feather name="camera" size={24} color="#606C38" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Cargando grupos...</Text>
@@ -51,12 +61,20 @@ export default function GroupsList() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Mis Grupos</Text>
-        <TouchableOpacity
-          onPress={() => setScannerModalVisible(true)}
-          style={styles.scanButton}
-        >
-          <Feather name="camera" size={24} color="#606C38" />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => setJoinModalVisible(true)}
+            style={styles.iconButton}
+          >
+            <Feather name="hash" size={24} color="#606C38" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setScannerModalVisible(true)}
+            style={styles.iconButton}
+          >
+            <Feather name="camera" size={24} color="#606C38" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -78,7 +96,7 @@ export default function GroupsList() {
                 activeOpacity={0.7}
               >
                 {/* Badge de notificaciones */}
-                {group.pending_invitations_count && group.pending_invitations_count > 0 && (
+                {(group.pending_invitations_count || 0) > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>{group.pending_invitations_count}</Text>
                   </View>
@@ -124,7 +142,7 @@ export default function GroupsList() {
                           group.user_role === 'moderator' && styles.roleTextModerator
                         ]}>
                           {group.user_role === 'admin' ? 'Admin' :
-                           group.user_role === 'moderator' ? 'Mod' : 'Miembro'}
+                            group.user_role === 'moderator' ? 'Mod' : 'Miembro'}
                         </Text>
                       </View>
                     )}
@@ -156,6 +174,12 @@ export default function GroupsList() {
         visible={scannerModalVisible}
         onClose={() => setScannerModalVisible(false)}
       />
+
+      {/* Modal de unirse con código */}
+      <JoinGroupModal
+        visible={joinModalVisible}
+        onClose={() => setJoinModalVisible(false)}
+      />
     </View>
   )
 }
@@ -182,8 +206,14 @@ const styles = StyleSheet.create({
     color: '#283618',
   },
 
-  scanButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  iconButton: {
     padding: 8,
+    marginLeft: 8,
   },
 
   scrollView: {

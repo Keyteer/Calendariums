@@ -86,7 +86,7 @@ export async function addUserToGroup(req, res) {
 }
 
 export async function removeUserFromGroup(req, res) {
-  const { groupId, userId } = req.body;
+  const { groupId, userId } = req.params;
 
   // Validaciones
   if (!groupId || !userId) {
@@ -198,7 +198,8 @@ export async function createGroupEvent(req, res) {
     start_datetime,
     end_datetime,
     location,
-    recurrence_rule
+    recurrence_rule,
+    group_id: groupId
   });
 
   if (eventError) {
@@ -243,16 +244,16 @@ export async function getGroupActivities(req, res) {
 
   // Agregar eventos de cada miembro (solo status accepted)
   const activitiesByMember = [];
-  
+
   for (const member of membersData) {
     const { data, error } = await getEventsByUserId(member.user_id);
     if (error) {
       console.error(`Error fetching events for user ${member.user_id}:`, error);
       continue;
     }
-    
+
     const accepted = (data || []).filter(evnt => evnt.status === "accepted");
-    
+
     const calendar = buildUserCalendar(accepted, start, end);
     const { all } = calendar;
 
@@ -275,6 +276,30 @@ export async function getGroupActivities(req, res) {
   return res.json({
     range: { start, end },
     members: activitiesByMember
+  });
+}
+
+/**
+ * Obtiene los miembros de un curso
+ * GET /groups/members/:groupId
+ */
+export async function getGroupMembers(req, res) {
+  const { groupId } = req.params;
+
+  if (!groupId) {
+    return res.status(400).json({
+      error: "Group ID is required"
+    });
+  }
+
+  const { data, error } = await groupsService.getGroupMembers(groupId);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    members: data
   });
 }
 
