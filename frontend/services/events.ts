@@ -36,8 +36,9 @@ export function createEvent(eventData: CreateEventData) {
   return apiPost("/events", eventData);
 }
 
+// TODO: Implementar cuando el backend tenga PATCH /events/:id
 export function updateEvent(id: string, data: any) {
-  return apiPost(`/events/${id}`, data);
+  return apiPatch(`/events/${id}`, data);
 }
 
 export async function getEventTypes(): Promise<EventType[]> {
