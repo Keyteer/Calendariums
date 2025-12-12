@@ -139,7 +139,7 @@ export default function ChatAI() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={1}
     >
       <FlatList
         ref={flatListRef}
@@ -181,6 +181,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 20,
+    paddingTop: 75,
     paddingBottom: 10,
   },
   messageContainer: {
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 6,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',

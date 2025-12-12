@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native'
 type LoginPageProps = {
   onLoginPress: () => void;
 };
@@ -18,7 +18,10 @@ export default function LoginPage({ onLoginPress }: LoginPageProps) {
         <Text style={styles.Btext}>Entrar sin sesión</Text>
       </TouchableOpacity>
 
-      
+      <Image
+        source={require('../assets/michi1.png')}
+        style={styles.michiImage}
+      />
     </View>
   )
 }
@@ -49,10 +52,17 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 18,
     },
-    BloqueVerde:{ 
+    BloqueVerde:{
         backgroundColor: '#6A7441',
         width: '100%',
         height: '25%',
-        
+
+    },
+    michiImage: {
+        position: 'absolute',
+        bottom: 40,
+        width: 275,
+        height: 275,
+        resizeMode: 'contain',
     }
 });
