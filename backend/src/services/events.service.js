@@ -202,3 +202,76 @@ export async function addParticipantToEvent(eventId, userId, status = "pending")
 
   return { data, error: null };
 }
+
+/**
+ * Actualiza el estado de un participante de evento
+ */
+export async function updateParticipantStatus(participantId, newStatus) {
+  const { data, error } = await supabase
+    .from("event_participants")
+    .update({ status: newStatus })
+    .eq("id", participantId)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data, error: null };
+}
+
+/**
+ * Obtiene las invitaciones pendientes de eventos de un usuario
+ */
+export async function getPendingInvitationsByUser(userId) {
+  const { data, error } = await supabase
+    .from("event_participants")
+    .select(`
+      id,
+      status,
+      added_at,
+      events (
+        id,
+        title,
+        description,
+        start_datetime,
+        end_datetime,
+        location,
+        group_id,
+        event_type_id,
+        creator_id,
+        event_types (
+          name,
+          color,
+          icon
+        )
+      )
+    `)
+    .eq("user_id", userId)
+    .eq("status", "pending");
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data, error: null };
+}
+
+/**
+ * Obtiene el ID de un participante específico de un evento
+ */
+export async function getEventParticipantId(eventId, userId) {
+  const { data, error } = await supabase
+    .from("event_participants")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data, error: null };
+}

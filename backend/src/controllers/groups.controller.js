@@ -277,3 +277,73 @@ export async function getGroupActivities(req, res) {
     members: activitiesByMember
   });
 }
+
+/**
+ * Genera un código de invitación para un grupo
+ * POST /groups/:groupId/invite
+ */
+export async function generateGroupInvite(req, res) {
+  const { groupId } = req.params;
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({
+      error: "User ID is required"
+    });
+  }
+
+  const { data, error } = await groupsService.generateInviteCode(groupId, userId);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.status(201).json({
+    message: "Invite code generated successfully",
+    invite: data
+  });
+}
+
+/**
+ * Obtiene información de un grupo por código de invitación
+ * GET /groups/invite/:code
+ */
+export async function getGroupByInviteCode(req, res) {
+  const { code } = req.params;
+
+  const { data, error } = await groupsService.getGroupByInviteCode(code);
+
+  if (error) {
+    return res.status(404).json({ error: error.message });
+  }
+
+  return res.json({
+    invite: data
+  });
+}
+
+/**
+ * Une un usuario a un grupo usando un código de invitación
+ * POST /groups/join/:code
+ */
+export async function joinGroupByInviteCode(req, res) {
+  const { code } = req.params;
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({
+      error: "User ID is required"
+    });
+  }
+
+  const { data, error } = await groupsService.joinGroupByCode(code, userId);
+
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  return res.status(200).json({
+    message: "Successfully joined group",
+    group: data
+  });
+}

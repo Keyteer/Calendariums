@@ -8,7 +8,10 @@ import {
   updateGroupMemberRole,
   createGroupEvent,
   getGroupActivities,
-  deleteGroup
+  deleteGroup,
+  generateGroupInvite,
+  getGroupByInviteCode,
+  joinGroupByInviteCode
 } from "../controllers/groups.controller.js";
 
 const router = Router();
@@ -39,5 +42,14 @@ router.get("/:groupId/events", getGroupActivities);
 
 // DELETE /groups/:id
 router.delete("/:id", deleteGroup);
+
+// POST /groups/:groupId/invite - Generate invite code
+router.post("/:groupId/invite", generateGroupInvite);
+
+// GET /groups/invite/:code - Get group info by invite code
+router.get("/invite/:code", getGroupByInviteCode);
+
+// POST /groups/join/:code - Join group by invite code
+router.post("/join/:code", joinGroupByInviteCode);
 
 export default router;

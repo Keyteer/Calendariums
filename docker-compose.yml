@@ -2,25 +2,28 @@ version: '3.8'
 
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: calendarium-backend
     ports:
       - "6969:6969"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=env
       - PORT=6969
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/calendarium
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=${OLLAMA_HOST}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:480b-cloud}
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
       - db
-      - ollama
     restart: unless-stopped
     command: npm run dev
     networks:
@@ -47,17 +50,6 @@ services:
     networks:
       - calendarium-network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: calendarium-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - calendarium-network
-
   adminer:
     image: adminer:latest
     container_name: calendarium-adminer
@@ -73,8 +65,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  ollama_data:
     driver: local
 
 networks:

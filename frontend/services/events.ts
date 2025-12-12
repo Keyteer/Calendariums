@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPost, apiPatch } from "./api";
 
 export interface CreateEventData {
   title: string;
@@ -67,4 +67,49 @@ export async function deleteEvent(eventId: string) {
     console.error(`Error deleting event ${eventId}:`, error);
     return { error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+// ============================================
+// Participantes de Eventos
+// ============================================
+
+export async function updateParticipantStatus(participantId: string, status: 'accepted' | 'declined' | 'maybe') {
+  return apiPatch(`/events/participants/${participantId}`, { status })
+}
+
+export async function getPendingInvitations(userId: string) {
+  return apiGet(`/events/pending/${userId}`)
+}
+
+export async function checkEventConflicts(userId: string, start: string, end: string) {
+  // Obtener eventos del usuario en ese rango de fechas
+  const response = await getEvents(userId, start, end)
+
+  if (response.error || !response.events) {
+    return []
+  }
+
+  // Filtrar solo eventos aceptados
+  const acceptedEvents = response.events.filter((event: any) => {
+    // Si no tiene participantes, es un evento creado por el usuario (auto-aceptado)
+    if (!event.event_participants || event.event_participants.length === 0) {
+      return true
+    }
+    // Si tiene participantes, verificar que el usuario lo haya aceptado
+    return event.event_participants.some((p: any) =>
+      p.user_id === userId && p.status === 'accepted'
+    )
+  })
+
+  // Detectar conflictos
+  const proposedStart = new Date(start)
+  const proposedEnd = new Date(end)
+
+  return acceptedEvents.filter((event: any) => {
+    const eventStart = new Date(event.start_datetime)
+    const eventEnd = new Date(event.end_datetime)
+
+    // Verificar overlap: (StartA < EndB) AND (EndA > StartB)
+    return proposedStart < eventEnd && proposedEnd > eventStart
+  })
 }

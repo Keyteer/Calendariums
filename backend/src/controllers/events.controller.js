@@ -1,4 +1,11 @@
-import { getEventsByUserId, createEvent, deleteEventById, addParticipantToEvent } from "../services/events.service.js";
+import {
+  getEventsByUserId,
+  createEvent,
+  deleteEventById,
+  addParticipantToEvent,
+  updateParticipantStatus,
+  getPendingInvitationsByUser
+} from "../services/events.service.js";
 import { buildUserCalendar } from "../utils/events.js";
 
 export async function getUserCalendar(req, res) {
@@ -131,5 +138,63 @@ export async function addEventParticipant(req, res) {
   return res.status(201).json({
     message: "Participant added",
     participant: data
+  });
+}
+
+/**
+ * Actualiza el estado de un participante (pending -> accepted/declined)
+ * PATCH /events/participants/:participantId
+ */
+export async function updateEventParticipantStatus(req, res) {
+  const { participantId } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({
+      error: "Status is required"
+    });
+  }
+
+  // Validar que el status sea válido
+  const validStatuses = ["pending", "accepted", "declined", "maybe"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`
+    });
+  }
+
+  const { data, error } = await updateParticipantStatus(participantId, status);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    message: "Participant status updated",
+    participant: data
+  });
+}
+
+/**
+ * Obtiene todas las invitaciones pendientes de un usuario
+ * GET /events/pending/:userId
+ */
+export async function getPendingInvitations(req, res) {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({
+      error: "User ID is required"
+    });
+  }
+
+  const { data, error } = await getPendingInvitationsByUser(userId);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.json({
+    invitations: data
   });
 }

@@ -1,8 +1,9 @@
 import { DateTime } from "luxon";
 import { getEventsByUserId } from "./events.service.js";
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://ollama:11434";
-const MODEL = "tinyllama";
+const OLLAMA_HOST = process.env.OLLAMA_HOST || "https://ollama.com";
+const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const MODEL = process.env.OLLAMA_MODEL || "qwen3-coder:30b";
 
 /**
  * Genera una sugerencia de horario para un solo usuario.
@@ -66,9 +67,14 @@ Your Response (JSON Array only):
 
     let response;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (OLLAMA_API_KEY) {
+        headers["Authorization"] = `Bearer ${OLLAMA_API_KEY}`;
+      }
+
       response = await fetch(`${OLLAMA_HOST}/api/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ model: MODEL, prompt: prompt, stream: false, format: "json" }),
         signal: controller.signal
       });
@@ -163,9 +169,14 @@ Task: Suggest 3 possible time slots where ALL participants are free in the next 
 Return ONLY a JSON array of objects with 'start_datetime', 'end_datetime', and 'reason'.
     `;
 
+    const headers = { "Content-Type": "application/json" };
+    if (OLLAMA_API_KEY) {
+      headers["Authorization"] = `Bearer ${OLLAMA_API_KEY}`;
+    }
+
     const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ model: MODEL, prompt: prompt, stream: false, format: "json" }),
     });
 
@@ -239,9 +250,14 @@ Response Format (JSON):
 
     let response;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (OLLAMA_API_KEY) {
+        headers["Authorization"] = `Bearer ${OLLAMA_API_KEY}`;
+      }
+
       response = await fetch(`${OLLAMA_HOST}/api/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ model: MODEL, prompt: prompt, stream: false, format: "json" }),
         signal: controller.signal
       });
@@ -581,6 +597,356 @@ Response Format (JSON):
 
   } catch (error) {
     console.error("Error parsing event:", error);
+    return { data: null, error: error.message };
+  }
+}
+
+/**
+ * Parsea eventos usando Tool Calling de Ollama Cloud
+ * Esta función permite al modelo decidir inteligentemente qué herramientas usar
+ */
+export async function parseEventWithToolCalling(userId, text) {
+  try {
+    const userNow = DateTime.now().setZone("UTC-3");
+    const humanDate = userNow.toFormat("cccc, dd LLL yyyy, HH:mm");
+
+    // Definir las herramientas disponibles para el modelo
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "create_event",
+          description: "Crea un nuevo evento en el calendario del usuario. Soporta eventos recurrentes usando formato RRule.",
+          parameters: {
+            type: "object",
+            required: ["title", "start_datetime", "end_datetime", "event_type_id", "creator_id"],
+            properties: {
+              title: {
+                type: "string",
+                description: "Título descriptivo del evento"
+              },
+              start_datetime: {
+                type: "string",
+                description: "Fecha y hora de inicio en formato ISO 8601 (ej: 2025-12-16T14:00:00-03:00)"
+              },
+              end_datetime: {
+                type: "string",
+                description: "Fecha y hora de fin en formato ISO 8601"
+              },
+              location: {
+                type: "string",
+                description: "Ubicación física o virtual del evento (opcional)"
+              },
+              description: {
+                type: "string",
+                description: "Descripción adicional del evento (opcional)"
+              },
+              event_type_id: {
+                type: "string",
+                enum: ["Clase", "Evento Social", "Examen", "Otro", "Proyecto", "Reunión", "Tarea"],
+                description: "Tipo de evento según categorías predefinidas"
+              },
+              creator_id: {
+                type: "string",
+                description: "ID del usuario que crea el evento"
+              },
+              recurrence_rules: {
+                type: "array",
+                description: "Reglas de recurrencia si el evento se repite",
+                items: {
+                  type: "object",
+                  properties: {
+                    rrule: {
+                      type: "string",
+                      description: "String en formato RRule. Ejemplos: 'FREQ=DAILY;COUNT=5' (diario 5 veces), 'FREQ=WEEKLY;BYDAY=MO,WE,FR' (lunes, miércoles, viernes), 'FREQ=WEEKLY;BYDAY=TU,TH;COUNT=30' (martes y jueves 30 veces), 'FREQ=MONTHLY;BYMONTHDAY=15' (día 15 de cada mes)"
+                    },
+                    timezone: {
+                      type: "string",
+                      description: "Zona horaria (usar 'UTC-3' para Chile/Argentina)"
+                    }
+                  },
+                  required: ["rrule", "timezone"]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_user_events",
+          description: "Obtiene los eventos existentes del usuario en un rango de fechas para detectar conflictos de horario",
+          parameters: {
+            type: "object",
+            required: ["userId"],
+            properties: {
+              userId: {
+                type: "string",
+                description: "ID del usuario"
+              },
+              start: {
+                type: "string",
+                description: "Fecha de inicio del rango (YYYY-MM-DD). Si no se especifica, usa la fecha actual"
+              },
+              end: {
+                type: "string",
+                description: "Fecha de fin del rango (YYYY-MM-DD). Si no se especifica, usa 7 días adelante"
+              }
+            }
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "suggest_time_slot",
+          description: "Sugiere hasta 3 horarios disponibles para un nuevo evento basándose en el calendario del usuario",
+          parameters: {
+            type: "object",
+            required: ["userId", "description", "duration"],
+            properties: {
+              userId: {
+                type: "string",
+                description: "ID del usuario"
+              },
+              description: {
+                type: "string",
+                description: "Descripción del evento para el cual sugerir horarios"
+              },
+              duration: {
+                type: "number",
+                description: "Duración estimada del evento en minutos"
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    // Calcular el próximo lunes para ayudar al modelo
+    const nextMonday = userNow.plus({ days: (8 - userNow.weekday) % 7 || 7 });
+    const nextMondayFormatted = nextMonday.toFormat("yyyy-MM-dd");
+
+    // Prompt del sistema con contexto
+    const systemPrompt = `Eres un asistente de calendario inteligente.
+
+FECHA Y HORA ACTUAL: ${humanDate} (${userNow.toISO()})
+HOY ES: ${userNow.toFormat("cccc")} (día ${userNow.weekday} de la semana)
+PRÓXIMO LUNES: ${nextMondayFormatted}
+
+Tu trabajo es EXTRAER información de eventos del texto del usuario, NO crearlos directamente.
+
+IMPORTANTE: Cuando uses create_event, estás PROPONIENDO el evento al usuario para confirmación.
+El usuario verá los detalles y decidirá si crearlo o no.
+
+CÁLCULO DE FECHAS CRÍTICO:
+- Para "próximo lunes" o "los lunes", usa el PRÓXIMO lunes desde HOY (${nextMondayFormatted})
+- Para "mañana", usa ${userNow.plus({ days: 1 }).toFormat("yyyy-MM-dd")}
+- Para "pasado mañana", usa ${userNow.plus({ days: 2 }).toFormat("yyyy-MM-dd")}
+- NUNCA uses fechas del año siguiente a menos que sea explícito
+- SIEMPRE verifica que las fechas estén en el año actual (2025)
+
+CAPACIDADES:
+- Extraer: título, fecha/hora inicio-fin, ubicación, tipo de evento
+- Detectar recurrencia en lenguaje natural (diario, semanal, mensual, por X días/semanas/meses)
+- Manejar fechas relativas (hoy, mañana, próximo lunes, siguiente martes)
+- Sugerir horarios cuando no se especifica hora
+
+TIPOS DE EVENTO (elige el más apropiado):
+- "Clase" → clases académicas, cursos, talleres educativos
+- "Reunión" → reuniones de trabajo, juntas, meetings
+- "Examen" → exámenes, pruebas, evaluaciones
+- "Tarea" → tareas, deberes, asignaciones
+- "Proyecto" → proyectos, trabajos largos
+- "Evento Social" → fiestas, salidas, eventos sociales
+- "Otro" → gimnasio, citas médicas, cualquier otro tipo
+
+REGLAS DE RECURRENCIA (formato RRule):
+- Diario durante N días: FREQ=DAILY;COUNT=N
+- Semanal (un día): FREQ=WEEKLY;BYDAY=MO;COUNT=N
+- Semanal (múltiples): FREQ=WEEKLY;BYDAY=TU,TH;COUNT=N
+- Mensual: FREQ=MONTHLY;BYMONTHDAY=15;COUNT=N
+
+CÓDIGOS DE DÍAS:
+MO=Lunes, TU=Martes, WE=Miércoles, TH=Jueves, FR=Viernes, SA=Sábado, SU=Domingo
+
+INTERPRETACIÓN DE PERIODOS:
+- "durante 30 días" con evento semanal (1 día) → COUNT=4 (4 semanas)
+- "durante 30 días" con evento semanal (2 días) → COUNT=8 (4 semanas × 2 días)
+- "por 2 meses" con evento semanal (1 día) → COUNT=8 (8 semanas)
+- "por 2 meses" con evento semanal (2 días) → COUNT=16 (8 semanas × 2 días)
+
+INSTRUCCIONES CRÍTICAS:
+1. Analiza el texto cuidadosamente buscando: título, hora, ubicación, frecuencia
+2. Si detectas recurrencia ("todos los", "cada", "durante", "por"), agrega recurrence_rules
+3. Extrae la ubicación EXACTA del texto (ej: "sala A302", "laboratorio B", "aula 201")
+4. Infiere el tipo de evento correcto del contexto
+5. Usa timezone "UTC-3" siempre
+6. Calcula COUNT correctamente según el periodo y la frecuencia
+7. Si no especifica hora, usa get_user_events y suggest_time_slot
+8. SIEMPRE incluye creator_id en create_event
+9. Para horas en formato 12h (8am, 3pm), conviértelas a formato 24h ISO 8601`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: text }
+    ];
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+    let response;
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (OLLAMA_API_KEY) {
+        headers["Authorization"] = `Bearer ${OLLAMA_API_KEY}`;
+      }
+
+      // Primera llamada al modelo con tools
+      response = await fetch(`${OLLAMA_HOST}/api/chat`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: MODEL,
+          messages,
+          tools,
+          stream: false
+        }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log("Ollama response:", JSON.stringify(result, null, 2));
+
+    // Verificar si el modelo quiere usar herramientas
+    if (result.message?.tool_calls && result.message.tool_calls.length > 0) {
+      const toolResults = [];
+
+      // Ejecutar cada tool call
+      for (const toolCall of result.message.tool_calls) {
+        const functionName = toolCall.function.name;
+        // Ollama Cloud retorna arguments como objeto, no como string
+        const functionArgs = typeof toolCall.function.arguments === 'string'
+          ? JSON.parse(toolCall.function.arguments)
+          : toolCall.function.arguments;
+
+        console.log(`Executing tool: ${functionName} with args:`, functionArgs);
+
+        let toolResult;
+        switch (functionName) {
+          case "create_event":
+            // Asegurar que creator_id esté presente
+            if (!functionArgs.creator_id) {
+              functionArgs.creator_id = userId;
+            }
+            // NO ejecutar createEvent, solo capturar los argumentos para que el frontend los confirme
+            toolResult = {
+              success: true,
+              event_data: functionArgs,
+              message: "Event data extracted successfully. Awaiting user confirmation."
+            };
+            break;
+
+          case "get_user_events":
+            toolResult = await getEventsByUserId(functionArgs.userId || userId);
+            break;
+
+          case "suggest_time_slot":
+            toolResult = await generateScheduleSuggestion(
+              functionArgs.userId || userId,
+              { description: functionArgs.description, duration: functionArgs.duration }
+            );
+            break;
+
+          default:
+            toolResult = { error: `Unknown function: ${functionName}` };
+        }
+
+        toolResults.push({
+          role: "tool",
+          content: JSON.stringify(toolResult)
+        });
+      }
+
+      // Segunda llamada al modelo con los resultados de las herramientas
+      const followUpMessages = [
+        ...messages,
+        result.message,
+        ...toolResults
+      ];
+
+      const followUpResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(OLLAMA_API_KEY && { "Authorization": `Bearer ${OLLAMA_API_KEY}` })
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: followUpMessages,
+          stream: false
+        })
+      });
+
+      if (!followUpResponse.ok) {
+        throw new Error(`Ollama API error in follow-up: ${followUpResponse.statusText}`);
+      }
+
+      const followUpResult = await followUpResponse.json();
+
+      // Si el modelo llamó create_event, retornar los datos del evento en formato compatible con frontend
+      const createEventCall = result.message.tool_calls.find(tc => tc.function.name === "create_event");
+      if (createEventCall) {
+        // Ollama Cloud retorna arguments como objeto, no como string
+        const eventArgs = typeof createEventCall.function.arguments === 'string'
+          ? JSON.parse(createEventCall.function.arguments)
+          : createEventCall.function.arguments;
+        return {
+          data: {
+            title: eventArgs.title,
+            start_datetime: eventArgs.start_datetime,
+            end_datetime: eventArgs.end_datetime,
+            location: eventArgs.location || null,
+            description: eventArgs.description || null,
+            event_type_id: eventArgs.event_type_id,
+            recurrence_rules: eventArgs.recurrence_rules || null,
+            // Metadatos adicionales para el frontend (opcionales)
+            _ai_message: followUpResult.message.content,
+            _parsed_by_ai: true
+          },
+          error: null
+        };
+      }
+
+      // Si llamó otros tools (get_user_events, suggest_time_slot), retornar mensaje conversacional
+      return {
+        data: {
+          message: followUpResult.message.content,
+          _parsed_by_ai: false
+        },
+        error: null
+      };
+    } else {
+      // El modelo respondió sin usar herramientas (solo conversación)
+      return {
+        data: {
+          message: result.message.content,
+          _parsed_by_ai: false
+        },
+        error: null
+      };
+    }
+
+  } catch (error) {
+    console.error("Error in parseEventWithToolCalling:", error);
     return { data: null, error: error.message };
   }
 }

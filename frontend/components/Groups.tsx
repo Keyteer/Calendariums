@@ -1,32 +1,21 @@
 import React from 'react'
-import { StyleSheet, View, Text } from 'react-native'
+import { useApp } from '../context/AppContext'
+import GroupsList from './GroupsList'
+import GroupDetail from './GroupDetail'
 
 export default function Groups() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Grupos</Text>
-      <Text style={styles.subtitle}>Próximamente: Gestiona tus grupos de estudio</Text>
-    </View>
-  )
-}
+  const { selectedGroup, setSelectedGroup } = useApp()
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FEFAE0',
-    padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6A7441',
-    textAlign: 'center',
-  },
-})
+  // Si hay un grupo seleccionado, mostrar su detalle
+  if (selectedGroup) {
+    return (
+      <GroupDetail
+        group={selectedGroup}
+        onBack={() => setSelectedGroup(null)}
+      />
+    )
+  }
+
+  // Si no, mostrar la lista de grupos
+  return <GroupsList />
+}

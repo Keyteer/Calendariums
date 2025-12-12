@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native'
 import { Feather } from '@expo/vector-icons'
+import { useApp } from '../context/AppContext'
 
 // Importar las pantallas
 import MainPage from './MainPage'
@@ -12,6 +13,7 @@ type Screen = 'home' | 'groups' | 'chat' | 'profile'
 
 export default function SimpleNavigator() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home')
+  const { totalPendingGroupInvitations = 0 } = useApp()
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -58,11 +60,20 @@ export default function SimpleNavigator() {
           style={styles.tabButton}
           onPress={() => setCurrentScreen('groups')}
         >
-          <Feather
-            name="users"
-            size={24}
-            color={currentScreen === 'groups' ? '#6A7441' : '#999'}
-          />
+          <View>
+            <Feather
+              name="users"
+              size={24}
+              color={currentScreen === 'groups' ? '#6A7441' : '#999'}
+            />
+            {totalPendingGroupInvitations > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {totalPendingGroupInvitations > 99 ? '99+' : totalPendingGroupInvitations}
+                </Text>
+              </View>
+            )}
+          </View>
           <Text style={[
             styles.tabLabel,
             currentScreen === 'groups' && styles.tabLabelActive
@@ -143,6 +154,23 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     color: '#6A7441',
+    fontWeight: 'bold',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: 'bold',
   },
 })

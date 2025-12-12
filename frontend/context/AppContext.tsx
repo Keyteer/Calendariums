@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 import { getEvents } from '../services/events'
+import { getUserGroups } from '../services/groups'
 
 // Tipos
 export interface Event {
@@ -30,6 +31,36 @@ export interface User {
   full_name: string
 }
 
+export interface Group {
+  id: string
+  name: string
+  description?: string
+  creator_id: string
+  created_at: string
+  updated_at?: string
+  member_count?: number
+  user_role?: 'admin' | 'moderator' | 'member'
+  pending_invitations_count?: number
+  group_members?: Array<{
+    user_id: string
+    role: string
+    joined_at: string
+  }>
+}
+
+export interface GroupMember {
+  id: string
+  group_id: string
+  user_id: string
+  role: 'admin' | 'moderator' | 'member'
+  joined_at: string
+  user?: {
+    id: string
+    username: string
+    full_name: string
+  }
+}
+
 interface AppContextType {
   session: Session | null
   setSession: (session: Session | null) => void
@@ -40,6 +71,12 @@ interface AppContextType {
   setSelectedDate: (date: string) => void
   refreshEvents: () => Promise<void>
   refreshUser: () => Promise<void>
+  groups: Group[]
+  selectedGroup: Group | null
+  groupsLoading: boolean
+  setSelectedGroup: (group: Group | null) => void
+  refreshGroups: () => Promise<void>
+  totalPendingGroupInvitations: number
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -52,6 +89,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     new Date().toISOString().split('T')[0]
   )
   const [loading, setLoading] = useState(true)
+  const [groups, setGroups] = useState<Group[]>([])
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const [groupsLoading, setGroupsLoading] = useState(false)
 
   // Obtener datos del usuario
   const refreshUser = async () => {
@@ -101,16 +141,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Obtener grupos
+  const refreshGroups = async () => {
+    if (!session?.user) return
+
+    try {
+      setGroupsLoading(true)
+      const response = await getUserGroups(session.user.id)
+
+      if (response.error) {
+        console.error('Error fetching groups:', response.error)
+        setGroups([])
+        return
+      }
+
+      // Transformar los datos de grupos
+      const groupsData = response.groups?.map((item: any) => {
+        const group = item.groups || item
+        const userMembership = group.group_members?.find((m: any) => m.user_id === session.user.id)
+
+        return {
+          ...group,
+          user_role: userMembership?.role,
+          member_count: group.group_members?.length || 0,
+          pending_invitations_count: 0 // TODO: Implementar cuando tengamos el backend actualizado
+        }
+      }) || []
+
+      setGroups(groupsData)
+    } catch (error) {
+      console.error('Error refreshing groups:', error)
+      setGroups([])
+    } finally {
+      setGroupsLoading(false)
+    }
+  }
+
+  // Calcular total de invitaciones pendientes
+  const totalPendingGroupInvitations = groups.reduce(
+    (total, group) => total + (group.pending_invitations_count || 0),
+    0
+  )
+
   // Cargar datos iniciales cuando cambia la sesión
   useEffect(() => {
     const loadData = async () => {
       if (session) {
         setLoading(true)
-        await Promise.all([refreshUser(), refreshEvents()])
+        await Promise.all([refreshUser(), refreshEvents(), refreshGroups()])
         setLoading(false)
       } else {
         setUser(null)
         setEvents([])
+        setGroups([])
+        setSelectedGroup(null)
         setLoading(false)
       }
     }
@@ -130,6 +214,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedDate,
         refreshEvents,
         refreshUser,
+        groups,
+        selectedGroup,
+        groupsLoading,
+        setSelectedGroup,
+        refreshGroups,
+        totalPendingGroupInvitations,
       }}
     >
       {children}

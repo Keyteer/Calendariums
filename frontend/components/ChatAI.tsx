@@ -87,7 +87,8 @@ export default function ChatAI() {
         end_datetime: eventData.end_datetime,
         location: eventData.location || "TBD",
         event_type_id: typeToUse,
-        creator_id: user.id
+        creator_id: user.id,
+        recurrence_rules: eventData.recurrence_rules || undefined
       };
 
       const result = await createEvent(newEvent);
@@ -115,9 +116,12 @@ export default function ChatAI() {
           <View style={styles.proposalCard}>
             <Text style={styles.proposalTitle}>{item.eventData.title}</Text>
             <Text style={styles.proposalDetail}>🏷️ {item.eventData.event_type_id || 'Evento'}</Text>
-            <Text style={styles.proposalDetail}>📅 {DateTime.fromISO(item.eventData.start_datetime).toFormat("cccc dd LLL")}</Text>
+            <Text style={styles.proposalDetail}>📅 {DateTime.fromISO(item.eventData.start_datetime).setLocale('es').toFormat("cccc dd LLL")}</Text>
             <Text style={styles.proposalDetail}>⏰ {DateTime.fromISO(item.eventData.start_datetime).toFormat("HH:mm")} - {DateTime.fromISO(item.eventData.end_datetime).toFormat("HH:mm")}</Text>
             {item.eventData.location && <Text style={styles.proposalDetail}>📍 {item.eventData.location}</Text>}
+            {item.eventData.recurrence_rules && item.eventData.recurrence_rules.length > 0 && (
+              <Text style={styles.proposalDetail}>🔁 Evento recurrente</Text>
+            )}
 
             <TouchableOpacity
               style={styles.confirmButton}
