@@ -7,6 +7,7 @@ export interface CreateEventData {
   creator_id: string;
   start_datetime: string;
   end_datetime: string;
+  time_anticipation?: number;
   location?: string;
   recurrence_rule?: {
     rrule: string;
@@ -33,6 +34,7 @@ export function getEvents(userId: string, start?: string, end?: string) {
 }
 
 export function createEvent(eventData: CreateEventData) {
+  eventData.time_anticipation = eventData.time_anticipation ?? 15; // 15 minutes default
   return apiPost("/events", eventData);
 }
 

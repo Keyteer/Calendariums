@@ -38,7 +38,8 @@ export async function createNewEvent(req, res) {
     end_datetime,
     location,
     recurrence_rule,
-    recurrence_rules
+    recurrence_rules,
+    time_anticipation
   } = req.body;
   // Normalizar reglas a array uniforme
   let normalizedRecurrenceRules = [];
@@ -83,7 +84,8 @@ export async function createNewEvent(req, res) {
       start_datetime,
       end_datetime,
       location,
-      recurrence_rules: normalizedRecurrenceRules
+      recurrence_rules: normalizedRecurrenceRules,
+      time_anticipation: time_anticipation || 15
     });
     if (error) {
       return res.status(500).json({ error: error.message });

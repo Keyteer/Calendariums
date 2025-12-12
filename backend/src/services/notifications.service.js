@@ -111,100 +111,77 @@ export async function sendPushNotificationToMany(userIds, notification) {
 
 
 /**
- * Check for upcoming events and send reminder notifications
- * This should be called by a cron job
- * @param {number} minutesBefore - How many minutes before the event to send notification
+ * Check for pending reminders and send push notifications
+ * This should be called by a cron job every minute
  */
-export async function sendEventReminders(minutesBefore = 15) {
+export async function sendEventReminders() {
   try {
     const now = new Date();
-    const targetTime = new Date(now.getTime() + minutesBefore * 60 * 1000);
-    
-    // Window: events starting in the next minute around targetTime
-    const windowStart = new Date(targetTime.getTime() - 30 * 1000); // 30 seconds before
-    const windowEnd = new Date(targetTime.getTime() + 30 * 1000); // 30 seconds after
 
-    // console.log(`Checking for events starting between ${windowStart.toISOString()} and ${windowEnd.toISOString()}`);
-
-    // Get events starting in the target window that haven't been notified yet
-    const { data: events, error } = await supabase
-      .from("events")
+    // Get all unsent reminders where the reminder time has passed
+    const { data: reminders, error } = await supabase
+      .from("reminders")
       .select(`
         id,
-        title,
-        description,
-        start_datetime,
-        location,
-        creator_id,
-        event_participants (
-          user_id,
-          status
+        user_id,
+        event_id,
+        time_anticipation,
+        events (
+          id,
+          title,
+          description,
+          start_datetime,
+          location
         )
       `)
-      .gte("start_datetime", windowStart.toISOString())
-      .lte("start_datetime", windowEnd.toISOString());
+      .eq("sent", false);
 
     if (error) {
-      console.error("Error fetching upcoming events:", error);
+      console.error("Error fetching reminders:", error);
       return;
     }
 
-    if (!events || events.length === 0) {
-      // console.log("No upcoming events to notify about");
+    if (!reminders || reminders.length === 0) {
       return;
     }
 
-    console.log(`Found ${events.length} events to send reminders for`);
+    // Filter reminders that should be sent now
+    const remindersToSend = reminders.filter((reminder) => {
+      if (!reminder.events) return false;
 
-    // Process each event
-    for (const event of events) {
-      // Check if we already sent a notification for this event
-      const { data: existingNotification } = await supabase
-        .from("notifications")
-        .select("id")
-        .eq("event_id", event.id)
-        .eq("title", `Reminder: ${event.title}`)
-        .single();
+      const eventStart = new Date(reminder.events.start_datetime);
+      const reminderTime = new Date(eventStart.getTime() - reminder.time_anticipation * 60 * 1000);
 
-      if (existingNotification) {
-        console.log(`Notification already sent for event ${event.id}`);
-        continue;
-      }
+      // Send if current time is past the reminder time
+      return now >= reminderTime;
+    });
 
-      // Get all users to notify (creator + accepted participants)
-      const usersToNotify = [event.creator_id];
-      
-      if (event.event_participants) {
-        const acceptedParticipants = event.event_participants
-          .filter((p) => p.status === "accepted")
-          .map((p) => p.user_id);
-        usersToNotify.push(...acceptedParticipants);
-      }
+    if (remindersToSend.length === 0) {
+      return;
+    }
 
-      // Remove duplicates
-      const uniqueUsers = [...new Set(usersToNotify)];
+    console.log(`Found ${remindersToSend.length} reminders to send`);
+
+    // Process each reminder
+    for (const reminder of remindersToSend) {
+      const event = reminder.events;
 
       const notification = {
         title: `Reminder: ${event.title}`,
-        body: `${event.location ? `At ${event.location}\n` : ""}${event.description ? `${event.description}\n` : ""}`,
+        body: `${event.location ? `At ${event.location}\n` : ""}${event.description ? `${event.description}\n` : ""}Starting in ${reminder.time_anticipation} minutes`,
         data: { eventId: event.id, type: "event_reminder" },
       };
 
-      // Send push notifications
-      await sendPushNotificationToMany(uniqueUsers, notification);
+      // Send push notification
+      await sendPushNotification(reminder.user_id, notification);
 
-      // Record the notification in the database for each user
-      const notificationRecords = uniqueUsers.map((userId) => ({
-        user_id: userId,
-        event_id: event.id,
-        title: notification.title,
-        message: notification.body,
-        read: false,
-      }));
+      // Mark reminder as sent
+      await supabase
+        .from("reminders")
+        .update({ sent: true })
+        .eq("id", reminder.id);
 
-      await supabase.from("notifications").insert(notificationRecords);
-
-      console.log(`Sent reminders for event "${event.title}" to ${uniqueUsers.length} users`);
+      console.log(`Sent reminder for event "${event.title}" to user ${reminder.user_id}`);
     }
   } catch (error) {
     console.error("Error in sendEventReminders:", error);
@@ -242,15 +219,6 @@ export async function sendEventInviteNotification(eventId, invitedUserId) {
     };
 
     await sendPushNotification(invitedUserId, notification);
-
-    // Record in database
-    await supabase.from("notifications").insert({
-      user_id: invitedUserId,
-      event_id: eventId,
-      title: notification.title,
-      message: notification.body,
-      read: false,
-    });
   } catch (error) {
     console.error("Error sending event invite notification:", error);
   }
@@ -279,8 +247,8 @@ export async function sendEventResponseNotification(eventId, responderId, respon
       return;
     }
 
-    const responseText = response === "accepted" ? "accepted" : 
-               response === "declined" ? "declined" : "responded to";
+    const responseText = response === "accepted" ? "accepted" :
+      response === "declined" ? "declined" : "responded to";
 
     const notification = {
       title: `Event Response: ${event.title}`,
@@ -289,15 +257,6 @@ export async function sendEventResponseNotification(eventId, responderId, respon
     };
 
     await sendPushNotification(event.creator_id, notification);
-
-    // Record in database
-    await supabase.from("notifications").insert({
-      user_id: event.creator_id,
-      event_id: eventId,
-      title: notification.title,
-      message: notification.body,
-      read: false,
-    });
   } catch (error) {
     console.error("Error sending event response notification:", error);
   }

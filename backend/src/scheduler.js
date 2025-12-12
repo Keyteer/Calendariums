@@ -8,7 +8,7 @@ export function initScheduler() {
   // Run every minute to check for upcoming events (minimum granularity)
   cron.schedule("* * * * *", async () => {
     // console.log(`[${new Date().toISOString()}] Running event reminder check...`);
-    await sendEventReminders(15); // 15 minutes before
+    await sendEventReminders();
   });
 
   console.log("Notification scheduler initialized");

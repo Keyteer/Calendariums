@@ -41,7 +41,8 @@ export async function createEvent(eventData) {
     start_datetime,
     end_datetime,
     location,
-    recurrence_rules
+    recurrence_rules,
+    time_anticipation
   } = eventData;
   
   // Insertar el evento principal
@@ -75,6 +76,22 @@ export async function createEvent(eventData) {
 
   if (participantError) {
     console.error("Error adding creator as participant:", participantError);
+  }
+
+  // Create reminder for the creator
+  if (time_anticipation && time_anticipation > 0) {
+    const { error: reminderError } = await supabase
+      .from("reminders")
+      .insert({
+        event_id: event.id,
+        user_id: creator_id,
+        time_anticipation: time_anticipation,
+        sent: false
+      });
+
+    if (reminderError) {
+      console.error("Error creating reminder:", reminderError);
+    }
   }
 
   // Si hay reglas de recurrencia (múltiples)

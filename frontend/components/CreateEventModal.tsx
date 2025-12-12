@@ -50,6 +50,9 @@ export default function CreateEventModal({
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [endDateObj, setEndDateObj] = useState(new Date())
 
+  // Reminder state
+  const [reminderMinutes, setReminderMinutes] = useState('15')
+
   // Cargar tipos de eventos
   useEffect(() => {
     loadEventTypes()
@@ -139,6 +142,7 @@ export default function CreateEventModal({
     setCount('0')
     setShowDatePicker(false)
     setEndDateObj(new Date())
+    setReminderMinutes('15')
     if (eventTypes.length > 0) {
       setSelectedType(eventTypes[0])
     }
@@ -200,6 +204,7 @@ export default function CreateEventModal({
         start_datetime,
         end_datetime,
         recurrence_rule,
+        time_anticipation: parseInt(reminderMinutes) || 15,
       }
 
       const response = await createEvent(eventData)
@@ -345,6 +350,19 @@ export default function CreateEventModal({
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+              />
+            </View>
+
+            {/* Recordatorio */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Recordatorio (minutos antes)</Text>
+              <TextInput
+                style={styles.input}
+                value={reminderMinutes}
+                onChangeText={setReminderMinutes}
+                placeholder="15"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
               />
             </View>
 
@@ -771,5 +789,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#606C38',
     fontWeight: '500',
+  },
+
+  reminderButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  reminderButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+
+  reminderButtonActive: {
+    borderColor: '#606C38',
+    backgroundColor: '#606C3820',
+  },
+
+  reminderButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  reminderButtonTextActive: {
+    color: '#606C38',
+    fontWeight: 'bold',
   },
 })
