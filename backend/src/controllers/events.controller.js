@@ -1,5 +1,6 @@
 import { getEventsByUserId, createEvent, deleteEventById, addParticipantToEvent } from "../services/events.service.js";
 import { buildUserCalendar } from "../utils/events.js";
+import { sendEventInviteNotification } from "../services/notifications.service.js";
 
 export async function getUserCalendar(req, res) {
   const userId = req.params.userId;
@@ -112,6 +113,11 @@ export async function addEventParticipant(req, res) {
     }
     return res.status(500).json({ error: error.message });
   }
+
+  // Send push notification to the invited user
+  sendEventInviteNotification(id, user_id).catch((err) => {
+    console.error("Failed to send invite notification:", err);
+  });
 
   return res.status(201).json({
     message: "Participant added",

@@ -17,6 +17,30 @@ Notifications.setNotificationHandler({
   }),
 })
 
+// Set up notification categories with action buttons
+async function setupNotificationCategories() {
+  await Notifications.setNotificationCategoryAsync('event_invite', [
+    {
+      identifier: 'accept',
+      buttonTitle: 'Accept',
+      options: {
+        opensAppToForeground: false,
+      },
+    },
+    {
+      identifier: 'decline',
+      buttonTitle: 'Decline',
+      options: {
+        opensAppToForeground: false,
+        isDestructive: true,
+      },
+    },
+  ])
+}
+
+// Initialize categories
+setupNotificationCategories()
+
 // Tipos
 export interface Event {
   id: string
@@ -98,13 +122,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // Get the Expo push token
+      // Try multiple sources for the projectId
       const projectId = Constants?.expoConfig?.extra?.eas?.projectId
         ?? Constants?.easConfig?.projectId
+        ?? '796a8af9-7d1b-4a22-a4e4-f11210e42db2' // Hardcoded fallback
 
-      if (!projectId) {
-        console.error('No EAS projectId found')
-        return null
-      }
+      console.log('Using projectId:', projectId)
 
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId })
       const token = tokenData.data
@@ -199,12 +222,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Listen for when user taps on a notification
+    // Listen for when user taps on a notification or action button
     const responseListener = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        console.log('User tapped notification:', response)
-        // You can add navigation logic here based on notification data
-        // const data = response.notification.request.content.data
+      async (response) => {
+        const actionId = response.actionIdentifier
+        const data = response.notification.request.content.data as { 
+          eventId?: string
+          type?: string 
+        }
+
+        console.log('Notification response:', { actionId, data })
+
+        // Handle event invite actions
+        if (data?.type === 'event_invite' && data?.eventId && session?.user) {
+          let status: string | null = null
+
+          if (actionId === 'accept') {
+            status = 'accepted'
+          } else if (actionId === 'decline') {
+            status = 'declined'
+          }
+
+          if (status) {
+            try {
+              // Update participant status in database
+              const { error } = await supabase
+                .from('event_participants')
+                .update({ status })
+                .eq('event_id', data.eventId)
+                .eq('user_id', session.user.id)
+
+              if (error) {
+                console.error('Error updating participant status:', error)
+              } else {
+                console.log(`Event ${status} successfully`)
+                // Refresh events to reflect the change
+                await refreshEvents()
+              }
+            } catch (error) {
+              console.error('Error handling invite response:', error)
+            }
+          }
+        }
+
+        // Handle default tap (opens app)
+        if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+          // User tapped the notification itself, not an action button
+          // You can navigate to the event details here
+          console.log('User tapped notification, eventId:', data?.eventId)
+        }
       }
     )
 
@@ -213,7 +279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notificationListener.remove()
       responseListener.remove()
     }
-  }, [])
+  }, [session])
 
   return (
     <AppContext.Provider
