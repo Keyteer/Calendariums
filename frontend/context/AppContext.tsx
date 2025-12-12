@@ -155,6 +155,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      // Obtener invitaciones pendientes del usuario
+      const pendingResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:6969'}/events/pending/${session.user.id}`)
+      const pendingData = await pendingResponse.json()
+      const pendingInvitations = pendingData.invitations || []
+
+      // Crear un mapa de group_id -> count de invitaciones pendientes
+      const pendingCountByGroup: { [key: string]: number } = {}
+
+      // Contar invitaciones por grupo
+      pendingInvitations.forEach((invitation: any) => {
+        const groupId = invitation.events?.group_id
+        if (groupId) {
+          pendingCountByGroup[groupId] = (pendingCountByGroup[groupId] || 0) + 1
+        }
+      })
+
       // Transformar los datos de grupos
       const groupsData = response.groups?.map((item: any) => {
         const group = item.groups || item
@@ -164,7 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...group,
           user_role: userMembership?.role,
           member_count: group.group_members?.length || 0,
-          pending_invitations_count: 0 // TODO: Implementar cuando tengamos el backend actualizado
+          pending_invitations_count: pendingCountByGroup[group.id] || 0
         }
       }) || []
 
