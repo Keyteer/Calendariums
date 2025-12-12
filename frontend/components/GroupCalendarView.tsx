@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native'
+import { Calendar } from 'react-native-calendars'
 import { Feather } from '@expo/vector-icons'
 import { getGroupActivities } from '../services/groups'
 import { Group } from '../context/AppContext'
@@ -52,6 +53,8 @@ export default function GroupCalendarView({ group, onBack }: GroupCalendarViewPr
   const [memberActivities, setMemberActivities] = useState<MemberActivities[]>([])
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getWeekStart(new Date()))
   const [weekDays, setWeekDays] = useState<Date[]>([])
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
   useEffect(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -164,11 +167,57 @@ export default function GroupCalendarView({ group, onBack }: GroupCalendarViewPr
     )
   }
 
+  const getMarkedDates = () => {
+    const marked: any = {}
+
+    memberActivities.forEach((member) => {
+      member.activities.forEach((activity) => {
+        const date = new Date(activity.start_datetime).toISOString().split('T')[0]
+        if (!marked[date]) {
+          marked[date] = { marked: true, dotColor: '#606C38' }
+        }
+      })
+    })
+
+    // Marcar el día seleccionado
+    if (viewMode === 'month') {
+      marked[selectedDate] = {
+        ...marked[selectedDate],
+        selected: true,
+        selectedColor: '#606C38',
+      }
+    }
+
+    return marked
+  }
+
+  const getEventsForDate = (date: string) => {
+    const events: Array<{ member: MemberActivities; activity: Activity; color: string }> = []
+
+    memberActivities.forEach((member, index) => {
+      member.activities.forEach((activity) => {
+        const activityDate = new Date(activity.start_datetime).toISOString().split('T')[0]
+        if (activityDate === date) {
+          events.push({
+            member,
+            activity,
+            color: getMemberColor(index)
+          })
+        }
+      })
+    })
+
+    return events.sort((a, b) =>
+      new Date(a.activity.start_datetime).getTime() - new Date(b.activity.start_datetime).getTime()
+    )
+  }
+
   const renderDayColumn = (dayDate: Date, dayIndex: number) => {
     const isToday = dayDate.toDateString() === new Date().toDateString()
+    const columnWidth = Math.max((SCREEN_WIDTH - 80) / 7, 80) // Mínimo 80px por columna
 
     return (
-      <View key={dayIndex} style={styles.dayColumn}>
+      <View key={dayIndex} style={[styles.dayColumn, { width: columnWidth }]}>
         {/* Header del día */}
         <View style={[styles.dayHeader, isToday && styles.todayHeader]}>
           <Text style={[styles.dayName, isToday && styles.todayText]}>
@@ -212,20 +261,38 @@ export default function GroupCalendarView({ group, onBack }: GroupCalendarViewPr
           <Feather name="arrow-left" size={24} color="#283618" />
         </TouchableOpacity>
 
-        <View style={styles.weekInfo}>
-          <Text style={styles.weekRange}>{formatWeekRange()}</Text>
-          <TouchableOpacity onPress={goToToday}>
-            <Text style={styles.todayButton}>Hoy</Text>
-          </TouchableOpacity>
+        <View style={styles.centerControls}>
+          <View style={styles.weekInfo}>
+            <Text style={styles.weekRange}>
+              {viewMode === 'week' ? formatWeekRange() : 'Calendario Mensual'}
+            </Text>
+            <TouchableOpacity onPress={goToToday}>
+              <Text style={styles.todayButton}>Hoy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.navControls}>
-          <TouchableOpacity onPress={goToPreviousWeek} style={styles.navButton}>
-            <Feather name="chevron-left" size={24} color="#606C38" />
+          <TouchableOpacity
+            onPress={() => setViewMode(viewMode === 'week' ? 'month' : 'week')}
+            style={styles.viewToggle}
+          >
+            <Feather
+              name={viewMode === 'week' ? 'calendar' : 'list'}
+              size={20}
+              color="#606C38"
+            />
           </TouchableOpacity>
-          <TouchableOpacity onPress={goToNextWeek} style={styles.navButton}>
-            <Feather name="chevron-right" size={24} color="#606C38" />
-          </TouchableOpacity>
+          {viewMode === 'week' && (
+            <>
+              <TouchableOpacity onPress={goToPreviousWeek} style={styles.navButton}>
+                <Feather name="chevron-left" size={24} color="#606C38" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={goToNextWeek} style={styles.navButton}>
+                <Feather name="chevron-right" size={24} color="#606C38" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
@@ -259,6 +326,97 @@ export default function GroupCalendarView({ group, onBack }: GroupCalendarViewPr
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#606C38" />
           <Text style={styles.loadingText}>Cargando disponibilidad...</Text>
+        </View>
+      ) : viewMode === 'month' ? (
+        <View style={styles.monthViewContainer}>
+          {/* Calendario mensual */}
+          <Calendar
+            current={selectedDate}
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            markedDates={getMarkedDates()}
+            theme={{
+              backgroundColor: '#FEFAE0',
+              calendarBackground: '#FEFAE0',
+              textSectionTitleColor: '#606C38',
+              selectedDayBackgroundColor: '#606C38',
+              selectedDayTextColor: '#ffffff',
+              todayTextColor: '#BC6C25',
+              dayTextColor: '#283618',
+              textDisabledColor: '#d9d9d9',
+              dotColor: '#606C38',
+              selectedDotColor: '#ffffff',
+              arrowColor: '#606C38',
+              monthTextColor: '#283618',
+              indicatorColor: '#606C38',
+              textDayFontWeight: '400',
+              textMonthFontWeight: 'bold',
+              textDayHeaderFontWeight: '600',
+              textDayFontSize: 14,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 12,
+            }}
+          />
+
+          {/* Eventos del día seleccionado */}
+          <View style={styles.selectedDayEventsContainer}>
+            <Text style={styles.selectedDayTitle}>
+              Eventos del{' '}
+              {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'long',
+              })}
+            </Text>
+
+            <ScrollView style={styles.eventsScrollView}>
+              {getEventsForDate(selectedDate).length === 0 ? (
+                <View style={styles.noEventsDay}>
+                  <Feather name="calendar" size={32} color="#9CA3AF" />
+                  <Text style={styles.noEventsText}>No hay eventos este día</Text>
+                </View>
+              ) : (
+                getEventsForDate(selectedDate).map((item, index) => (
+                  <View key={index} style={styles.eventCard}>
+                    <View
+                      style={[styles.eventColorBar, { backgroundColor: item.color }]}
+                    />
+                    <View style={styles.eventCardContent}>
+                      <View style={styles.eventCardHeader}>
+                        <View
+                          style={[
+                            styles.memberDot,
+                            { backgroundColor: item.color },
+                          ]}
+                        >
+                          <Text style={styles.memberDotText}>
+                            {getMemberInitials(item.member)}
+                          </Text>
+                        </View>
+                        <Text style={styles.memberName}>
+                          {item.member.user?.full_name ||
+                            item.member.user?.username ||
+                            'Usuario'}
+                        </Text>
+                      </View>
+                      <View style={styles.eventTimeRow}>
+                        <Feather name="clock" size={14} color="#6B7280" />
+                        <Text style={styles.eventTime}>
+                          {new Date(item.activity.start_datetime).toLocaleTimeString(
+                            'es-ES',
+                            { hour: '2-digit', minute: '2-digit' }
+                          )}{' '}
+                          -{' '}
+                          {new Date(item.activity.end_datetime).toLocaleTimeString(
+                            'es-ES',
+                            { hour: '2-digit', minute: '2-digit' }
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.calendarContainer}>
@@ -299,8 +457,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingTop: 60,
+    backgroundColor: '#FEFAE0',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
@@ -309,8 +468,19 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 
+  centerControls: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
   navControls: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  viewToggle: {
+    padding: 8,
+    marginRight: 8,
   },
 
   weekInfo: {
@@ -419,7 +589,7 @@ const styles = StyleSheet.create({
   },
 
   dayColumn: {
-    width: 100,
+    minWidth: 80,
     borderLeftWidth: 1,
     borderLeftColor: '#E0E0E0',
   },
@@ -471,5 +641,101 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderRadius: 4,
     opacity: 0.7,
+  },
+
+  // Estilos para vista mensual
+  monthViewContainer: {
+    flex: 1,
+    backgroundColor: '#FEFAE0',
+  },
+
+  selectedDayEventsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: '#FEFAE0',
+  },
+
+  selectedDayTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#283618',
+    marginBottom: 12,
+  },
+
+  eventsScrollView: {
+    flex: 1,
+  },
+
+  noEventsDay: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+
+  noEventsText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+
+  eventCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+
+  eventColorBar: {
+    width: 4,
+  },
+
+  eventCardContent: {
+    flex: 1,
+    padding: 12,
+  },
+
+  eventCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  memberDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+
+  memberDotText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+
+  memberName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#283618',
+    flex: 1,
+  },
+
+  eventTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  eventTime: {
+    fontSize: 13,
+    color: '#6B7280',
   },
 })

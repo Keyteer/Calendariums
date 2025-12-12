@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { parseEventFromText } from '../services/ollama';
 import { createEvent, getEventTypes } from '../services/events';
 import { useApp } from '../context/AppContext';
 import { DateTime } from 'luxon';
+
+const botAvatar = require('../assets/michiagender.png');
 
 interface Message {
   id: string;
@@ -15,7 +17,7 @@ interface Message {
 }
 
 export default function ChatAI() {
-  const { user } = useApp();
+  const { user, refreshEvents } = useApp();
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: 'Hola! Soy tu asistente de calendario. Dime qué quieres agendar (ej: "Reunión mañana a las 10am")', sender: 'ai' }
   ]);
@@ -96,6 +98,7 @@ export default function ChatAI() {
       if (result.error) {
         Alert.alert("Error", "No se pudo crear el evento: " + result.error);
       } else {
+        await refreshEvents();
         Alert.alert("Éxito", "Evento creado correctamente");
         setMessages(prev => [...prev, { id: Date.now().toString(), text: '¡Listo! Evento agendado.', sender: 'ai' }]);
       }
@@ -109,28 +112,33 @@ export default function ChatAI() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     return (
-      <View style={[styles.messageContainer, isUser ? styles.userMessage : styles.aiMessage]}>
-        <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>{item.text}</Text>
-
-        {item.type === 'event-proposal' && item.eventData && (
-          <View style={styles.proposalCard}>
-            <Text style={styles.proposalTitle}>{item.eventData.title}</Text>
-            <Text style={styles.proposalDetail}>🏷️ {item.eventData.event_type_id || 'Evento'}</Text>
-            <Text style={styles.proposalDetail}>📅 {DateTime.fromISO(item.eventData.start_datetime).setLocale('es').toFormat("cccc dd LLL")}</Text>
-            <Text style={styles.proposalDetail}>⏰ {DateTime.fromISO(item.eventData.start_datetime).toFormat("HH:mm")} - {DateTime.fromISO(item.eventData.end_datetime).toFormat("HH:mm")}</Text>
-            {item.eventData.location && <Text style={styles.proposalDetail}>📍 {item.eventData.location}</Text>}
-            {item.eventData.recurrence_rules && item.eventData.recurrence_rules.length > 0 && (
-              <Text style={styles.proposalDetail}>🔁 Evento recurrente</Text>
-            )}
-
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={() => handleConfirmEvent(item.eventData)}
-            >
-              <Text style={styles.confirmButtonText}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.messageRow}>
+        {!isUser && (
+          <Image source={botAvatar} style={styles.botAvatar} />
         )}
+        <View style={[styles.messageContainer, isUser ? styles.userMessage : styles.aiMessage]}>
+          <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>{item.text}</Text>
+
+          {item.type === 'event-proposal' && item.eventData && (
+            <View style={styles.proposalCard}>
+              <Text style={styles.proposalTitle}>{item.eventData.title}</Text>
+              <Text style={styles.proposalDetail}>🏷️ {item.eventData.event_type_id || 'Evento'}</Text>
+              <Text style={styles.proposalDetail}>📅 {DateTime.fromISO(item.eventData.start_datetime).setLocale('es').toFormat("cccc dd LLL")}</Text>
+              <Text style={styles.proposalDetail}>⏰ {DateTime.fromISO(item.eventData.start_datetime).toFormat("HH:mm")} - {DateTime.fromISO(item.eventData.end_datetime).toFormat("HH:mm")}</Text>
+              {item.eventData.location && <Text style={styles.proposalDetail}>📍 {item.eventData.location}</Text>}
+              {item.eventData.recurrence_rules && item.eventData.recurrence_rules.length > 0 && (
+                <Text style={styles.proposalDetail}>🔁 Evento recurrente</Text>
+              )}
+
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => handleConfirmEvent(item.eventData)}
+              >
+                <Text style={styles.confirmButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
     );
   };
@@ -184,11 +192,22 @@ const styles = StyleSheet.create({
     paddingTop: 75,
     paddingBottom: 10,
   },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 12,
+  },
+  botAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+  },
   messageContainer: {
     maxWidth: '80%',
     padding: 12,
     borderRadius: 16,
-    marginBottom: 12,
   },
   userMessage: {
     alignSelf: 'flex-end',

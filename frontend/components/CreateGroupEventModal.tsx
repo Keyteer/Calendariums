@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { Group } from '../context/AppContext'
+import { Group, useApp } from '../context/AppContext'
 import { createGroupEvent } from '../services/groups'
 import { getEventTypes, EventType } from '../services/events'
 
@@ -32,6 +32,8 @@ export default function CreateGroupEventModal({
   userId,
   onEventCreated,
 }: CreateGroupEventModalProps) {
+  const { refreshEvents, refreshGroups } = useApp()
+
   // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -203,7 +205,11 @@ export default function CreateGroupEventModal({
         [
           {
             text: 'OK',
-            onPress: () => {
+            onPress: async () => {
+              await Promise.all([
+                refreshEvents(),
+                refreshGroups()
+              ])
               resetForm()
               onClose()
               onEventCreated?.()

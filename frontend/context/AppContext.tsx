@@ -16,13 +16,24 @@ export interface Event {
   end_datetime: string
   created_by_ai: boolean
   event_type_id: string
+  group_id?: string | null
   event_types?: {
     name: string
     color: string
     icon: string
   }
   recurrence_rules?: any[]
-  event_participants?: Array<{ user_id: string; status: string }>
+  event_participants?: Array<{
+    user_id: string
+    status: string
+    users?: {
+      full_name?: string
+      username: string
+    }
+  }>
+  groups?: {
+    name: string
+  } | null
 }
 
 export interface User {

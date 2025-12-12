@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native'
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { useApp } from '../context/AppContext'
 import CreateGroupModal from './CreateGroupModal'
@@ -11,6 +11,13 @@ export default function GroupsList() {
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [scannerModalVisible, setScannerModalVisible] = useState(false)
   const [joinModalVisible, setJoinModalVisible] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await refreshGroups()
+    setRefreshing(false)
+  }
 
   useEffect(() => {
     // Refresh groups cuando se monta el componente
@@ -77,7 +84,18 @@ export default function GroupsList() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#606C38']}
+            tintColor="#606C38"
+          />
+        }
+      >
         {groups.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Feather name="users" size={64} color="#DDA15E" />

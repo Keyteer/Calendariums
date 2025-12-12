@@ -179,17 +179,11 @@ export default function PendingGroupInvitations({
   return (
     <Modal
       visible={visible}
-      transparent
       animationType="slide"
+      transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-
+      <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
@@ -300,22 +294,17 @@ export default function PendingGroupInvitations({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
 
   modalContainer: {
     backgroundColor: '#FEFAE0',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: 34,
-    maxHeight: '85%',
+    maxHeight: '90%',
   },
 
   header: {
@@ -368,11 +357,12 @@ const styles = StyleSheet.create({
   },
 
   scrollView: {
-    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
 
   scrollContent: {
-    padding: 16,
+    paddingBottom: 40,
   },
 
   invitationCard: {

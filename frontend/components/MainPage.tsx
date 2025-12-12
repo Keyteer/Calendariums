@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native'
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native'
 import { Calendar, DateData } from 'react-native-calendars'
 import { Feather } from '@expo/vector-icons'
 import { useApp, Event } from '../context/AppContext'
@@ -11,6 +11,13 @@ export default function MainPage() {
   const { user, events, selectedDate, setSelectedDate, loading, refreshEvents } = useApp()
   const [modalVisible, setModalVisible] = useState(false)
   const [aiModalVisible, setAiModalVisible] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await refreshEvents()
+    setRefreshing(false)
+  }
 
   // Filtrar eventos del día seleccionado
   const getEventsForDate = (date: string): Event[] => {
@@ -112,7 +119,18 @@ export default function MainPage() {
         <Text style={styles.greeting}>Hola {user?.full_name || 'Usuario'}</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#606C38']}
+            tintColor="#606C38"
+          />
+        }
+      >
         {/* Calendario */}
         <View style={styles.calendarContainer}>
           <Calendar
@@ -187,6 +205,14 @@ export default function MainPage() {
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventTitle}>{event.title}</Text>
 
+                    {/* Badge de grupo */}
+                    {event.group_id && event.groups && (
+                      <View style={styles.groupBadge}>
+                        <Feather name="users" size={12} color="#606C38" />
+                        <Text style={styles.groupText}>{event.groups.name}</Text>
+                      </View>
+                    )}
+
                     {event.recurrence_rules && event.recurrence_rules.length > 0 && (
                       <View style={styles.recurringBadge}>
                         <Feather name="repeat" size={12} color="#606C38" />
@@ -225,6 +251,20 @@ export default function MainPage() {
                       <Text style={styles.eventDescription} numberOfLines={2}>
                         {event.description}
                       </Text>
+                    )}
+
+                    {/* Participantes del evento de grupo */}
+                    {event.group_id && event.event_participants && event.event_participants.length > 1 && (
+                      <View style={styles.participantsContainer}>
+                        <Feather name="users" size={12} color="#6B7280" />
+                        <Text style={styles.participantsText}>
+                          {event.event_participants
+                            .filter(p => p.status === 'accepted' && p.users)
+                            .map(p => p.users?.full_name || p.users?.username)
+                            .filter(Boolean)
+                            .join(', ')}
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -399,6 +439,24 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
+  groupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+    backgroundColor: '#606C3815',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+
+  groupText: {
+    fontSize: 11,
+    color: '#606C38',
+    fontWeight: '600',
+  },
+
   recurringBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -410,6 +468,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#606C38',
     fontStyle: 'italic',
+  },
+
+  participantsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+
+  participantsText: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
   },
 
   eventTypeContainer: {

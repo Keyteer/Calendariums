@@ -97,7 +97,7 @@ export default function AiSuggestionModal({ visible, onClose }: AiSuggestionModa
                 Alert.alert('Error', 'No se pudo crear el evento');
             } else {
                 Alert.alert('Éxito', 'Evento creado correctamente');
-                refreshEvents();
+                await refreshEvents();
                 onClose();
                 // Reset state
                 setDescription('');

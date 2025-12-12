@@ -17,13 +17,24 @@ export async function getEventsByUserId(userId) {
         end_datetime,
         created_by_ai,
         event_type_id,
+        group_id,
         event_types:event_type_id (
           name,
           color,
           icon
         ),
         recurrence_rules (*),
-        event_participants ( user_id, status )
+        event_participants (
+          user_id,
+          status,
+          users:user_id (
+            full_name,
+            username
+          )
+        ),
+        groups:group_id (
+          name
+        )
       )
     `)
     .eq("user_id", userId);
